@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
     const apiKey = process.env.NEYNAR_API_KEY
 
@@ -8,8 +8,12 @@ export async function POST() {
       return NextResponse.json({ success: false, error: "NEYNAR_API_KEY not configured" }, { status: 500 })
     }
 
+    // Get channel from request body, default to politics
+    const body = await request.json().catch(() => ({}))
+    const channel = body.channel || "politics"
+
     const feedResponse = await fetch(
-      "https://api.neynar.com/v2/farcaster/feed/channels?channel_ids=politics&limit=10",
+      `https://api.neynar.com/v2/farcaster/feed/channels?channel_ids=${channel}&limit=10`,
       {
         headers: {
           accept: "application/json",
@@ -31,7 +35,7 @@ export async function POST() {
     const casts = feedData.casts || []
 
     if (casts.length === 0) {
-      return NextResponse.json({ success: false, error: "No casts found in politics channel" }, { status: 404 })
+      return NextResponse.json({ success: false, error: `No casts found in ${channel} channel` }, { status: 404 })
     }
 
     // Step 2: Random User Selection - Select one random user from the 10 casts
