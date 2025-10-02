@@ -101,6 +101,8 @@ Keep it under 280 characters for Farcaster.`
     console.log("[v0] Generated response:", jungianResponse)
 
     console.log("[v0] Step 4: Posting reply to cast...")
+    console.log("[v0] Signer UUID:", signerUuid)
+    console.log("[v0] API Key:", apiKey ? "Present" : "Missing")
 
     const postResponse = await fetch("https://api.neynar.com/v2/farcaster/cast", {
       method: "POST",
