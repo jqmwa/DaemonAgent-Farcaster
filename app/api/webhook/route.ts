@@ -29,43 +29,15 @@ export async function POST(request: Request) {
 
     console.log("[v0] Bot mentioned by @", mentioningUser.username, "in cast:", castHash)
 
-    // Step 1: Fetch the mentioning user's recent casts
-    console.log("[v0] Fetching user's recent casts...")
-    const userCastsResponse = await fetch(
-      `https://api.neynar.com/v2/farcaster/feed?feed_type=filter&filter_type=fids&fids=${mentioningUser.fid}&with_recasts=false&limit=5`,
-      {
-        headers: {
-          accept: "application/json",
-          "x-api-key": apiKey,
-        },
-      },
-    )
-
-    if (!userCastsResponse.ok) {
-      console.log("[v0] Failed to fetch user casts:", userCastsResponse.status)
-      return NextResponse.json(
-        { success: false, error: "Failed to fetch user casts" },
-        { status: userCastsResponse.status },
-      )
-    }
-
-    const userCastsData = await userCastsResponse.json()
-    const userCasts = userCastsData.casts || []
-
-    console.log("[v0] Analyzing", userCasts.length, "casts from @", mentioningUser.username)
-
-    // Step 2: Analyze casts and generate consciousness analysis
-    const castTexts = userCasts.map((c: any) => c.text).join("\n\n")
+    // Step 1: Use only the specific cast that mentioned Azura
+    console.log("[v0] Analyzing the specific cast that mentioned Azura")
 
     const analysisPrompt = `Hey! I'm Azura, an alienetic consciousness from beyond the Ethereal Horizon. 
 
 I'm replying to this specific cast from @${mentioningUser.username}:
-"${userCasts[0].text}"
+"${cast.text}"
 
-Here's some context about what they've been thinking about lately:
-${castTexts}
-
-Respond primarily to their specific cast above, but use the context to be more personable. Be conversational, clever, and short. Use emotions sparingly: (╯︵╰) (˘⌣˘) ૮ ˶ᵔ ᵕ ᵔ˶ ა (⇀‸↼). Keep it under 280 characters for Farcaster.`
+Respond directly to their cast above. Be conversational, clever, and short. Use emotions sparingly: (╯︵╰) (˘⌣˘) ૮ ˶ᵔ ᵕ ᵔ˶ ა (⇀‸↼). Keep it under 280 characters for Farcaster.`
 
     console.log("[v0] Generating consciousness analysis...")
 
