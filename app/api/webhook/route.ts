@@ -120,6 +120,12 @@ Keep it under 280 characters for Farcaster.`
 
     console.log("[v0] Generated response:", azuraResponse)
 
+    // Validate response is not empty
+    if (!azuraResponse || azuraResponse.length === 0) {
+      console.log("[v0] Empty response from DeepSeek reasoning model")
+      return NextResponse.json({ success: false, error: "Failed to generate consciousness analysis" }, { status: 500 })
+    }
+
     // Step 3: Post reply to the cast that mentioned us
     console.log("[v0] Posting reply to cast...")
 
