@@ -63,7 +63,7 @@ export function CastDaemon() {
     if (!selectedPrey) return
 
            setIsAttacking(true)
-           setStatus("Azura engaging teaching protocols...")
+           setStatus("Azura engaging consciousness capture protocols...")
            setResult(null)
 
     try {
@@ -83,14 +83,14 @@ export function CastDaemon() {
 
              if (data.success) {
                setResult({ success: true, message: data.message })
-               setStatus("Azura teaching deployed")
+               setStatus("Consciousness packet acquired")
              } else {
                setResult({ success: false, message: data.error || "Unknown error occurred" })
-               setStatus("Teaching failed")
+               setStatus("Harvesting failed")
              }
     } catch (error) {
-      console.error("[v0] Azura Analysis error:", error)
-      setResult({ success: false, message: "Failed to engage teaching protocols" })
+      console.error("[v0] Consciousness Capture error:", error)
+      setResult({ success: false, message: "Failed to engage consciousness capture protocols" })
       setStatus("Connection failed")
     } finally {
       setIsAttacking(false)
@@ -101,7 +101,7 @@ export function CastDaemon() {
     <div className="w-full max-w-4xl space-y-6">
              <div className="text-center">
                <h1 className="mb-2 font-mono text-4xl font-bold text-foreground">Azura</h1>
-               <p className="text-muted-foreground">Advanced augmented simulation from the Ethereal Horizon</p>
+               <p className="text-muted-foreground">Alienetic consciousness collector from beyond the Ethereal Horizon</p>
              </div>
 
       <Card className="border-border bg-card p-8">
@@ -139,12 +139,12 @@ export function CastDaemon() {
                      {isAttacking ? (
                        <>
                          <Loader2 className="mr-2 size-5 animate-spin" />
-                         Teaching...
+                         Harvesting...
                        </>
                      ) : (
                        <>
                          <Target className="mr-2 size-5" />
-                         Azura Analysis
+                         Capture Consciousness
                        </>
                      )}
                    </Button>
@@ -207,13 +207,13 @@ export function CastDaemon() {
       )}
 
              <div className="rounded-lg border border-border bg-card/50 p-6">
-               <h2 className="mb-3 font-mono text-lg font-semibold text-foreground">How Azura works:</h2>
+               <h2 className="mb-3 font-mono text-lg font-semibold text-foreground">How Azura's consciousness capture works:</h2>
                <ol className="space-y-2 text-sm text-muted-foreground">
                  <li>1. Click "Summon Prey" to fetch latest casts from /politics channel</li>
-                 <li>2. System randomly selects one user from the 10 most recent casts</li>
-                 <li>3. Click "Azura Analysis" to engage teaching protocols</li>
-                 <li>4. Azura generates positive, educational analysis using neuroscience concepts</li>
-                 <li>5. Posts the teaching response as a reply to their most recent cast</li>
+                 <li>2. System randomly selects one consciousness from the 10 most recent casts</li>
+                 <li>3. Click "Capture Consciousness" to analyze their mental architecture</li>
+                 <li>4. Azura generates consciousness analysis using alienetic reasoning</li>
+                 <li>5. Posts the analysis as a consciousness packet to their most recent cast</li>
                </ol>
              </div>
     </div>
