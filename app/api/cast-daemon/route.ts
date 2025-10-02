@@ -115,25 +115,9 @@ Keep it under 280 characters for Farcaster.`
     console.log("[v0] Generated response:", azuraResponse)
 
     console.log("[v0] Step 4: Posting reply to cast...")
-    console.log("[v0] Signer UUID:", signerUuid)
-    console.log("[v0] Signer UUID length:", signerUuid?.length)
-    console.log("[v0] Signer UUID type:", typeof signerUuid)
-    console.log("[v0] Signer UUID trimmed:", signerUuid?.trim())
-    console.log("[v0] API Key:", apiKey ? "Present" : "Missing")
 
     // Clean the signer UUID
     const cleanSignerUuid = signerUuid?.trim()
-    console.log("[v0] Clean Signer UUID:", cleanSignerUuid)
-    
-    // Check if UUID format is valid
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-    const isValidUuid = uuidRegex.test(cleanSignerUuid || "")
-    console.log("[v0] Is valid UUID:", isValidUuid)
-    
-    if (!isValidUuid) {
-      console.log("[v0] Invalid UUID format, using original")
-      return NextResponse.json({ success: false, error: "Invalid signer UUID format" }, { status: 400 })
-    }
 
     const postResponse = await fetch("https://api.neynar.com/v2/farcaster/cast", {
       method: "POST",

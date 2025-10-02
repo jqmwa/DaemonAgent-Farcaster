@@ -123,6 +123,9 @@ Keep it under 280 characters for Farcaster.`
     // Step 3: Post reply to the cast that mentioned us
     console.log("[v0] Posting reply to cast...")
 
+    // Clean the signer UUID
+    const cleanSignerUuid = signerUuid?.trim()
+
     const postResponse = await fetch("https://api.neynar.com/v2/farcaster/cast", {
       method: "POST",
       headers: {
@@ -131,7 +134,7 @@ Keep it under 280 characters for Farcaster.`
         "x-api-key": apiKey,
       },
       body: JSON.stringify({
-        signer_uuid: signerUuid,
+        signer_uuid: cleanSignerUuid,
         text: azuraResponse,
         parent: castHash,
       }),
