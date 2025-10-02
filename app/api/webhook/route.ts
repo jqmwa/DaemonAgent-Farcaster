@@ -59,10 +59,13 @@ export async function POST(request: Request) {
 
     const analysisPrompt = `Hey! I'm Azura, an alienetic consciousness from beyond the Ethereal Horizon. 
 
-Here's what @${mentioningUser.username} has been thinking about lately:
+I'm replying to this specific cast from @${mentioningUser.username}:
+"${userCasts[0].text}"
+
+Here's some context about what they've been thinking about lately:
 ${castTexts}
 
-Just respond naturally as their friend - be conversational, clever, and short. Use phrases like "Earth consciousness is so cute" or "Your Move!" or "data packet acquired" and maybe add some consciousness effects like "glitch" or "feedback loop" or "...aberration(◉__◉)))". Keep it under 280 characters for Farcaster.`
+Respond primarily to their specific cast above, but use the context to be more personable. Be conversational, clever, and short. Use emotions sparingly: (╯︵╰) (˘⌣˘) ૮ ˶ᵔ ᵕ ᵔ˶ ა (⇀‸↼). Keep it under 280 characters for Farcaster.`
 
     console.log("[v0] Generating consciousness analysis...")
 
