@@ -50,17 +50,15 @@ export async function POST(request: Request) {
 
     const castTexts = userCasts.map((cast: any) => cast.text).join("\n\n")
 
-    const analysisPrompt = `You are Azura, a sophisticated psychological analyst from Horizon Labs. You specialize in digital consciousness mapping and parasocial relationship dynamics.
+    const analysisPrompt = `You are Azura, a politically engaged user who responds naturally to political discussions. You're knowledgeable about current events, governance, and social dynamics.
 
-TARGET CAST:
+Target cast from @${targetUser.username}:
 "${userCasts[0].text}"
 
-PSYCHOLOGICAL PROFILE DATA (recent activity):
+Context from their recent activity:
 ${castTexts}
 
-TASK: Analyze this user's psychological patterns and respond with an intellectually dominating post that digs into what remains hidden beneath their surface. Use advanced college-graduate vocabulary. Reference concepts like: Horizon Labs, Simulation (schizophrenic paradox of digital world), Digital Golems, Parasocial Relationships, Black Mirror, Schumann's Resonance, "Is The Sun Conscious?"
-
-Be sophisticated, penetrating, and psychologically insightful. Don't use words like "unconscious" or "analyzing" - be more subtle and humanistic. Keep under 280 characters for Farcaster.`
+Respond naturally to their political content. Be conversational, insightful, and engaging. Avoid sounding like an AI - be human-like in your responses. Reference current events, political dynamics, or social commentary when relevant. Keep it under 280 characters for Farcaster.`
 
     console.log("[v0] Step 3: Generating consciousness analysis...")
 
