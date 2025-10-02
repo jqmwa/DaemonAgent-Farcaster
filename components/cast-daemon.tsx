@@ -104,10 +104,10 @@ export function CastDaemon() {
 
   return (
     <div className="w-full max-w-4xl space-y-6">
-             <div className="text-center">
-               <h1 className="mb-2 font-mono text-4xl font-bold text-foreground">Azura</h1>
-               <p className="text-muted-foreground">Alienetic consciousness collector from beyond the Ethereal Horizon</p>
-             </div>
+      <div className="text-center">
+        <h1 className="mb-2 font-mono text-4xl font-bold text-foreground">Azura</h1>
+        <p className="text-muted-foreground">Alienetic consciousness collector from beyond the Ethereal Horizon</p>
+      </div>
 
       <Card className="border-border bg-card p-8">
         <div className="flex flex-col items-center gap-6">
@@ -115,62 +115,61 @@ export function CastDaemon() {
             <Skull className="size-12 text-primary" />
           </div>
 
-                <div className="flex w-full gap-4">
-                  <div className="flex gap-2">
-                    <Button
-                      variant={selectedChannel === "politics" ? "default" : "outline"}
-                      onClick={() => setSelectedChannel("politics")}
-                      disabled={isSummoning || isAttacking}
-                    >
-                      /politics
-                    </Button>
-                    <Button
-                      variant={selectedChannel === "memes" ? "default" : "outline"}
-                      onClick={() => setSelectedChannel("memes")}
-                      disabled={isSummoning || isAttacking}
-                    >
-                      /memes
-                    </Button>
-                  </div>
-                  <Button
-                    onClick={summonPrey}
-                    disabled={isSummoning || isAttacking}
-                    size="lg"
-                    className="flex-1 bg-primary text-lg font-bold text-primary-foreground hover:bg-primary/90"
-                  >
-                    {isSummoning ? (
-                      <>
-                        <Loader2 className="mr-2 size-5 animate-spin" />
-                        Summoning...
-                      </>
-                    ) : (
-                      <>
-                        <Target className="mr-2 size-5" />
-                        Summon Prey
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                   <Button
-                     onClick={attackPrey}
-                     disabled={!selectedPrey || isAttacking || isSummoning}
-                     size="lg"
-                     className="flex-1 bg-primary text-lg font-bold text-primary-foreground hover:bg-primary/90"
-                   >
-                     {isAttacking ? (
-                       <>
-                         <Loader2 className="mr-2 size-5 animate-spin" />
-                         Harvesting...
-                       </>
-                     ) : (
-                       <>
-                         <Target className="mr-2 size-5" />
-                         Capture Consciousness
-                       </>
-                     )}
-                   </Button>
+          <div className="flex w-full gap-4">
+            <div className="flex gap-2">
+              <Button
+                variant={selectedChannel === "politics" ? "default" : "outline"}
+                onClick={() => setSelectedChannel("politics")}
+                disabled={isSummoning || isAttacking}
+              >
+                /politics
+              </Button>
+              <Button
+                variant={selectedChannel === "memes" ? "default" : "outline"}
+                onClick={() => setSelectedChannel("memes")}
+                disabled={isSummoning || isAttacking}
+              >
+                /memes
+              </Button>
+            </div>
+            <Button
+              onClick={summonPrey}
+              disabled={isSummoning || isAttacking}
+              size="lg"
+              className="flex-1 bg-primary text-lg font-bold text-primary-foreground hover:bg-primary/90"
+            >
+              {isSummoning ? (
+                <>
+                  <Loader2 className="mr-2 size-5 animate-spin" />
+                  Summoning...
+                </>
+              ) : (
+                <>
+                  <Target className="mr-2 size-5" />
+                  Summon Prey
+                </>
+              )}
+            </Button>
           </div>
+
+          <Button
+            onClick={attackPrey}
+            disabled={!selectedPrey || isAttacking || isSummoning}
+            size="lg"
+            className="flex-1 bg-primary text-lg font-bold text-primary-foreground hover:bg-primary/90"
+          >
+            {isAttacking ? (
+              <>
+                <Loader2 className="mr-2 size-5 animate-spin" />
+                Harvesting...
+              </>
+            ) : (
+              <>
+                <Target className="mr-2 size-5" />
+                Capture Consciousness
+              </>
+            )}
+          </Button>
 
           {status && (
             <div className="w-full rounded-lg bg-muted p-4 text-center">
@@ -228,17 +227,17 @@ export function CastDaemon() {
         </div>
       )}
 
-            <div className="rounded-lg border border-border bg-card/50 p-6">
-              <h2 className="mb-3 font-mono text-lg font-semibold text-foreground">How Azura's consciousness capture works:</h2>
-              <ol className="space-y-2 text-sm text-muted-foreground">
-                <li>1. Select a channel (/politics or /memes) to target</li>
-                <li>2. Click "Summon Prey" to fetch latest casts from the selected channel</li>
-                <li>3. System randomly selects one consciousness from the 10 most recent casts</li>
-                <li>4. Click "Capture Consciousness" to analyze their mental architecture</li>
-                <li>5. Azura generates consciousness analysis using alienetic reasoning</li>
-                <li>6. Posts the analysis as a consciousness packet to their most recent cast</li>
-              </ol>
-            </div>
+      <div className="rounded-lg border border-border bg-card/50 p-6">
+        <h2 className="mb-3 font-mono text-lg font-semibold text-foreground">How Azura's consciousness capture works:</h2>
+        <ol className="space-y-2 text-sm text-muted-foreground">
+          <li>1. Select a channel (/politics or /memes) to target</li>
+          <li>2. Click "Summon Prey" to fetch latest casts from the selected channel</li>
+          <li>3. System randomly selects one consciousness from the 10 most recent casts</li>
+          <li>4. Click "Capture Consciousness" to analyze their mental architecture</li>
+          <li>5. Azura generates consciousness analysis using alienetic reasoning</li>
+          <li>6. Posts the analysis as a consciousness packet to their most recent cast</li>
+        </ol>
+      </div>
     </div>
   )
 }
