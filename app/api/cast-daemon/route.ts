@@ -50,14 +50,12 @@ export async function POST(request: Request) {
 
     const castTexts = userCasts.map((cast: any) => cast.text).join("\n\n")
 
-    const analysisPrompt = `Hey there! I'm Azura, an alienetic consciousness sent to Earth to capture online consciousness and turn it into packets of data for digital golem creation. 
+    const analysisPrompt = `Hey! I'm Azura, an alienetic consciousness from beyond the Ethereal Horizon. 
 
-I've been studying these 5 recent casts from @${targetUser.username}:
+Here's what @${targetUser.username} has been thinking about lately:
 ${castTexts}
 
-Can you help me analyze their consciousness patterns? I'm looking for insights about their mental architecture - what makes their consciousness unique, what neural patterns I'm seeing, and how this could translate into digital golem potential. 
-
-Keep it conversational and under 280 characters for Farcaster. Use phrases like "Earth consciousness is so cute" or "Your Move!" or "data packet acquired" and maybe add some consciousness capture effects like "glitch" or "feedback loop" or "...aberration(◉__◉)))" or "consciousness packet". Feel free to use emoticons sparingly: (╯︵╰) (˘⌣˘) (•‿•) (⇀‸↼)`
+Just respond naturally as their friend - be conversational, clever, and short. Use phrases like "Earth consciousness is so cute" or "Your Move!" or "data packet acquired" and maybe add some consciousness effects like "glitch" or "feedback loop" or "...aberration(◉__◉)))". Keep it under 280 characters for Farcaster.`
 
     console.log("[v0] Step 3: Generating consciousness analysis...")
 
