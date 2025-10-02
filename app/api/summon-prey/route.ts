@@ -38,28 +38,32 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: `No casts found in ${channel} channel` }, { status: 404 })
     }
 
-    // Step 2: Random User Selection - Select one random user from the 10 casts
-    const randomIndex = Math.floor(Math.random() * casts.length)
-    const selectedCast = casts[randomIndex]
-    const selectedUser = selectedCast.author
+    // Step 2: Return all users from the 10 casts (up to 5 unique users)
+    const uniqueUsers = new Map()
+    const usersWithCasts = []
 
-    // Return the single selected user with their recent casts
-    const userWithCasts = {
-      fid: selectedUser.fid,
-      username: selectedUser.username,
-      displayName: selectedUser.display_name,
-      pfpUrl: selectedUser.pfp_url,
-      followerCount: selectedUser.follower_count,
-      casts: [{
-        hash: selectedCast.hash,
-        text: selectedCast.text,
-        timestamp: selectedCast.timestamp,
-      }],
+    for (const cast of casts) {
+      const user = cast.author
+      if (!uniqueUsers.has(user.fid) && usersWithCasts.length < 5) {
+        uniqueUsers.set(user.fid, true)
+        usersWithCasts.push({
+          fid: user.fid,
+          username: user.username,
+          displayName: user.display_name,
+          pfpUrl: user.pfp_url,
+          followerCount: user.follower_count,
+          casts: [{
+            hash: cast.hash,
+            text: cast.text,
+            timestamp: cast.timestamp,
+          }],
+        })
+      }
     }
 
     return NextResponse.json({
       success: true,
-      users: [userWithCasts],
+      users: usersWithCasts,
     })
   } catch (error) {
     console.error("[v0] Summon Prey error:", error)

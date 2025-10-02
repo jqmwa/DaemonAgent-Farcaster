@@ -48,9 +48,8 @@ export function CastDaemon() {
 
       if (data.success && data.users) {
         setPreyUsers(data.users)
-        setStatus(`Found target: @${data.users[0].username}`)
-        // Auto-select the single user
-        setSelectedPrey(data.users[0])
+        setStatus(`Found ${data.users.length} targets from /${selectedChannel}`)
+        setSelectedPrey(null) // Don't auto-select, let user choose
       } else {
         setResult({ success: false, message: data.error || "Failed to summon prey" })
         setStatus("Summoning failed")
@@ -198,32 +197,51 @@ export function CastDaemon() {
         </div>
       </Card>
 
-      {preyUsers.length > 0 && selectedPrey && (
+      {preyUsers.length > 0 && (
         <div className="space-y-4">
-          <h2 className="font-mono text-xl font-semibold text-foreground">Target Acquired:</h2>
-          <Card className="border-2 border-primary bg-primary/5 p-4">
-            <div className="flex items-start gap-4">
-              <Avatar className="size-12">
-                <AvatarImage src={selectedPrey.pfpUrl || "/placeholder.svg"} alt={selectedPrey.username} />
-                <AvatarFallback>{selectedPrey.username[0].toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <div className="mb-2 flex items-center gap-2">
-                  <h3 className="font-semibold text-foreground">{selectedPrey.displayName}</h3>
-                  <span className="text-sm text-muted-foreground">@{selectedPrey.username}</span>
-                  <span className="text-xs text-muted-foreground">• {selectedPrey.followerCount} followers</span>
+          <h2 className="font-mono text-xl font-semibold text-foreground">Select Target:</h2>
+          <div className="grid gap-4">
+            {preyUsers.map((user, index) => (
+              <Card 
+                key={user.fid} 
+                className={`cursor-pointer transition-all hover:shadow-lg ${
+                  selectedPrey?.fid === user.fid 
+                    ? "border-2 border-primary bg-primary/5" 
+                    : "border-border hover:border-primary/50"
+                }`}
+                onClick={() => setSelectedPrey(user)}
+              >
+                <div className="flex items-start gap-4 p-4">
+                  <Avatar className="size-12">
+                    <AvatarImage src={user.pfpUrl || "/placeholder.svg"} alt={user.username} />
+                    <AvatarFallback>{user.username[0].toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <div className="mb-2 flex items-center gap-2">
+                      <h3 className="font-semibold text-foreground">{user.displayName}</h3>
+                      <span className="text-sm text-muted-foreground">@{user.username}</span>
+                      <span className="text-xs text-muted-foreground">• {user.followerCount} followers</span>
+                    </div>
+                    <div className="space-y-2">
+                      {user.casts.map((cast, idx) => (
+                        <p key={idx} className="text-sm text-muted-foreground">
+                          {cast.text.substring(0, 150)}
+                          {cast.text.length > 150 ? "..." : ""}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                  {selectedPrey?.fid === user.fid && (
+                    <div className="flex items-center justify-center">
+                      <div className="size-6 rounded-full bg-primary flex items-center justify-center">
+                        <div className="size-3 rounded-full bg-primary-foreground"></div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="space-y-2">
-                  {selectedPrey.casts.map((cast, idx) => (
-                    <p key={idx} className="text-sm text-muted-foreground">
-                      {cast.text.substring(0, 150)}
-                      {cast.text.length > 150 ? "..." : ""}
-                    </p>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </Card>
+              </Card>
+            ))}
+          </div>
         </div>
       )}
 
@@ -232,8 +250,8 @@ export function CastDaemon() {
         <ol className="space-y-2 text-sm text-muted-foreground">
           <li>1. Select a channel (/politics or /memes) to target</li>
           <li>2. Click "Summon Prey" to fetch latest casts from the selected channel</li>
-          <li>3. System randomly selects one consciousness from the 10 most recent casts</li>
-          <li>4. Click "Capture Consciousness" to analyze their mental architecture</li>
+          <li>3. Choose from up to 5 unique users displayed</li>
+          <li>4. Click "Deploy Azura" to analyze their mental architecture</li>
           <li>5. Azura generates consciousness analysis using alienetic reasoning</li>
           <li>6. Posts the analysis as a consciousness packet to their most recent cast</li>
         </ol>
