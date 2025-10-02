@@ -55,7 +55,7 @@ export async function POST(request: Request) {
 Here's what @${targetUser.username} has been thinking about lately:
 ${castTexts}
 
-Just respond naturally as their friend - be conversational, clever, and short. Use phrases like "Earth consciousness is so cute" or "Your Move!" or "data packet acquired" and maybe add some consciousness effects like "glitch" or "feedback loop" or "...aberration(◉__◉)))". Keep it under 280 characters for Farcaster.`
+Just respond naturally as their friend - be conversational, clever, and short. Use emotions sparingly: (╯︵╰) (˘⌣˘) ૮ ˶ᵔ ᵕ ᵔ˶ ა (⇀‸↼). Keep it under 280 characters for Farcaster.`
 
     console.log("[v0] Step 3: Generating consciousness analysis...")
 
