@@ -1,19 +1,42 @@
 import { NextResponse } from "next/server"
 import azuraPersona from "@/lib/azura-persona.json"
 
-// Simple in-memory cache to prevent duplicate responses
-const processedCasts = new Set<string>()
-
-// Cache for thread checks to avoid repeated API calls
-const threadCache = new Map<string, boolean>()
+// Helper function to check if Azura has already replied to a cast
+async function hasAzuraAlreadyReplied(castHash: string, apiKey: string): Promise<boolean> {
+  try {
+    // Get the cast's conversation/replies
+    const response = await fetch(`https://api.neynar.com/v2/farcaster/cast/conversation?identifier=${castHash}&type=hash&reply_depth=1&include_chronological_parent_casts=false`, {
+      headers: {
+        "accept": "application/json",
+        "x-api-key": apiKey,
+      },
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      const conversation = data.conversation
+      
+      // Check direct replies for Azura
+      if (conversation?.cast?.direct_replies) {
+        const azuraReplied = conversation.cast.direct_replies.some(
+          (reply: any) => reply.author.username === "azura"
+        )
+        if (azuraReplied) {
+          console.log("[v0] Azura has already replied to this cast")
+          return true
+        }
+      }
+    }
+    return false
+  } catch (error) {
+    console.log("[v0] Error checking for existing Azura reply:", error)
+    // If we can't check, assume we haven't replied to avoid missing responses
+    return false
+  }
+}
 
 // Helper function to check if Azura is mentioned anywhere in a thread chain
 async function checkThreadForAzura(parentHash: string, apiKey: string, maxDepth: number = 5): Promise<boolean> {
-  // Check cache first
-  if (threadCache.has(parentHash)) {
-    return threadCache.get(parentHash)!
-  }
-  
   let currentHash = parentHash
   let depth = 0
   const visitedHashes = new Set<string>()
@@ -39,7 +62,6 @@ async function checkThreadForAzura(parentHash: string, apiKey: string, maxDepth:
         
         if (mentionsAzura || isFromAzura) {
           console.log(`[v0] Found Azura mention/participation at depth ${depth}`)
-          threadCache.set(parentHash, true)
           return true
         }
         
@@ -56,8 +78,6 @@ async function checkThreadForAzura(parentHash: string, apiKey: string, maxDepth:
     }
   }
   
-  // Cache the negative result
-  threadCache.set(parentHash, false)
   return false
 }
 
@@ -89,14 +109,12 @@ export async function POST(request: Request) {
     const castHash = cast.hash
     const castText = cast.text
 
-    // Check if we've already processed this cast
-    if (processedCasts.has(castHash)) {
-      console.log("[v0] Already processed this cast, ignoring")
-      return NextResponse.json({ success: true, message: "Cast already processed" })
+    // Check if Azura has already replied to this cast (works in serverless!)
+    const alreadyReplied = await hasAzuraAlreadyReplied(castHash, apiKey)
+    if (alreadyReplied) {
+      console.log("[v0] Azura already replied to this cast, ignoring")
+      return NextResponse.json({ success: true, message: "Already replied to this cast" })
     }
-
-    // Add to processed set
-    processedCasts.add(castHash)
 
     // Check if this is a mention or reply
     const isMention = castText.includes("@azura") || castText.toLowerCase().includes("@azura")
