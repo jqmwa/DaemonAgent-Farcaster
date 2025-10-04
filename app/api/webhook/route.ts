@@ -1,38 +1,6 @@
 import { NextResponse } from "next/server"
 import azuraPersona from "@/lib/azura-persona.json"
 
-// Small jittered delay to reduce race-condition collisions across cold starts
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
-
-// Optional distributed lock using Upstash Redis (idempotency per cast)
-async function acquireDistributedLock(key: string, ttlMs: number): Promise<boolean> {
-  const url = process.env.UPSTASH_REDIS_REST_URL
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN
-  if (!url || !token) {
-    // No Redis configured; allow processing (best-effort)
-    return true
-  }
-  try {
-    const command = ["SET", key, "1", "NX", "PX", String(ttlMs)]
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ command }),
-    })
-    if (!res.ok) return true // fail-open
-    const data = await res.json()
-    return data?.result === "OK"
-  } catch {
-    // fail-open to avoid missed replies
-    return true
-  }
-}
-
 // Build recent thread context (last N messages) for better conversational continuity
 async function buildRecentThreadContext(castHash: string, apiKey: string, lastN: number = 3): Promise<string> {
   try {
@@ -58,8 +26,31 @@ async function buildRecentThreadContext(castHash: string, apiKey: string, lastN:
   }
 }
 
+// In-memory deduplication (works within single instance, helps reduce redundant API calls)
+const recentlyProcessed = new Map<string, number>()
+const DEDUP_WINDOW_MS = 60_000 // 60 seconds
+
+function isRecentlyProcessed(castHash: string): boolean {
+  const now = Date.now()
+  const lastProcessed = recentlyProcessed.get(castHash)
+  
+  // Clean old entries
+  for (const [hash, timestamp] of recentlyProcessed.entries()) {
+    if (now - timestamp > DEDUP_WINDOW_MS) {
+      recentlyProcessed.delete(hash)
+    }
+  }
+  
+  if (lastProcessed && now - lastProcessed < DEDUP_WINDOW_MS) {
+    return true
+  }
+  
+  recentlyProcessed.set(castHash, now)
+  return false
+}
+
 // Helper function to check if Azura has already replied to a cast
-async function hasAzuraAlreadyReplied(castHash: string, apiKey: string): Promise<boolean> {
+async function hasAzuraAlreadyReplied(castHash: string, apiKey: string, botFid?: number): Promise<boolean> {
   try {
     // Get the cast's conversation/replies
     const response = await fetch(`https://api.neynar.com/v2/farcaster/cast/conversation?identifier=${castHash}&type=hash&reply_depth=1&include_chronological_parent_casts=false`, {
@@ -73,10 +64,14 @@ async function hasAzuraAlreadyReplied(castHash: string, apiKey: string): Promise
       const data = await response.json()
       const conversation = data.conversation
       
-      // Check direct replies for Azura
+      // Check direct replies for Azura (by username or FID)
       if (conversation?.cast?.direct_replies) {
         const azuraReplied = conversation.cast.direct_replies.some(
-          (reply: any) => reply.author.username === "azura"
+          (reply: any) => {
+            const isAzuraUsername = reply.author.username?.toLowerCase() === "azura"
+            const isAzuraFid = botFid !== undefined && reply.author.fid === botFid
+            return isAzuraUsername || isAzuraFid
+          }
         )
         if (azuraReplied) {
           console.log("[v0] Azura has already replied to this cast")
@@ -92,56 +87,28 @@ async function hasAzuraAlreadyReplied(castHash: string, apiKey: string): Promise
   }
 }
 
-// Helper function to check if Azura/bot is mentioned or has participated anywhere in a thread chain
-async function checkThreadForAzura(
-  parentHash: string,
-  apiKey: string,
-  botFid?: number,
-  maxDepth: number = 5,
-): Promise<boolean> {
-  let currentHash = parentHash
-  let depth = 0
-  const visitedHashes = new Set<string>()
-  
-  while (currentHash && depth < maxDepth && !visitedHashes.has(currentHash)) {
-    visitedHashes.add(currentHash)
+// Helper to check if parent cast is from Azura (for thread continuity)
+async function isReplyToAzura(parentHash: string, apiKey: string, botFid?: number): Promise<boolean> {
+  try {
+    const response = await fetch(`https://api.neynar.com/v2/farcaster/cast?identifier=${parentHash}&type=hash`, {
+      headers: {
+        "accept": "application/json",
+        "x-api-key": apiKey,
+      },
+    })
     
-    try {
-      const response = await fetch(`https://api.neynar.com/v2/farcaster/cast?identifier=${currentHash}&type=hash`, {
-        headers: {
-          "accept": "application/json",
-          "x-api-key": apiKey,
-        },
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        const cast = data.cast
-        
-        // Check if this cast mentions Azura or is from Azura/bot
-        const mentionsAzura = cast.text?.toLowerCase().includes("@azura")
-        const isFromAzura = cast.author.username === "azura"
-        const isFromBotFid = typeof botFid === 'number' ? cast.author.fid === botFid : false
-        
-        if (mentionsAzura || isFromAzura || isFromBotFid) {
-          console.log(`[v0] Found Azura mention/participation at depth ${depth}`)
-          return true
-        }
-        
-        // Move up to the parent cast
-        currentHash = cast.parent_hash
-        depth++
-      } else {
-        console.log(`[v0] Failed to fetch cast at depth ${depth}:`, response.status)
-        break
-      }
-    } catch (error) {
-      console.log(`[v0] Error checking thread at depth ${depth}:`, error)
-      break
+    if (response.ok) {
+      const data = await response.json()
+      const parentCast = data.cast
+      const isAzuraUsername = parentCast.author.username?.toLowerCase() === "azura"
+      const isAzuraFid = botFid !== undefined && parentCast.author.fid === botFid
+      return isAzuraUsername || isAzuraFid
     }
+    return false
+  } catch (error) {
+    console.log("[v0] Error checking parent cast:", error)
+    return false
   }
-  
-  return false
 }
 
 export async function POST(request: Request) {
@@ -179,16 +146,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, message: "Ignoring own cast" })
     }
 
-    // Distributed lock to ensure only one worker processes this cast
-    const lockKey = `lock:cast:${castHash}`
-    const lockAcquired = await acquireDistributedLock(lockKey, 45_000)
-    if (!lockAcquired) {
-      console.log("[v0] Another worker holds the lock for this cast, exiting")
-      return NextResponse.json({ success: true, message: "Another instance is handling this cast" })
+    // In-memory deduplication (fast, works within this instance)
+    if (isRecentlyProcessed(castHash)) {
+      console.log("[v0] Recently processed this cast in this instance, ignoring")
+      return NextResponse.json({ success: true, message: "Recently processed" })
     }
 
-    // Check if Azura has already replied to this cast (works in serverless!)
-    const alreadyReplied = await hasAzuraAlreadyReplied(castHash, apiKey)
+    // Check if Azura has already replied to this cast (API check for cross-instance dedup)
+    const alreadyReplied = await hasAzuraAlreadyReplied(castHash, apiKey, botFid)
     if (alreadyReplied) {
       console.log("[v0] Azura already replied to this cast, ignoring")
       return NextResponse.json({ success: true, message: "Already replied to this cast" })
@@ -206,30 +171,24 @@ export async function POST(request: Request) {
       text: castText.substring(0, 100)
     })
 
-    // Determine if we should respond
+    // SIMPLIFIED LOGIC: Only respond to mentions OR direct replies to Azura's casts
     let shouldRespond = false
     let responseType = ""
 
     if (isMention) {
+      // Always respond to mentions
       shouldRespond = true
       responseType = "mention"
-      console.log("[v0] Responding to mention")
-    } else if (isReply) {
-      // For replies, check if this is part of a conversation where Azura should participate
-      try {
-        // Check if we can find Azura mentioned anywhere in the thread chain
-        const threadHasAzura = await checkThreadForAzura(cast.parent_hash, apiKey, botFid)
-        if (threadHasAzura) {
-          shouldRespond = true
-          responseType = "thread_reply"
-          console.log("[v0] Responding to thread reply - Azura found in thread chain")
-        } else {
-          console.log("[v0] No Azura mention found in thread chain")
-        }
-      } catch (error) {
-        console.log("[v0] Error checking thread for Azura:", error)
-        // If there's an error, don't respond to avoid spam
-        console.log("[v0] Not responding due to thread check error")
+      console.log("[v0] Responding to direct mention")
+    } else if (isReply && cast.parent_hash) {
+      // Only respond to replies if the parent cast is FROM Azura (thread continuity)
+      const parentIsAzura = await isReplyToAzura(cast.parent_hash, apiKey, botFid)
+      if (parentIsAzura) {
+        shouldRespond = true
+        responseType = "thread_reply"
+        console.log("[v0] Responding to reply to Azura's cast (thread continuity)")
+      } else {
+        console.log("[v0] Parent cast not from Azura, ignoring reply")
       }
     }
 
@@ -343,13 +302,9 @@ IMPORTANT: Respond as Azura with vulnerability, gentleness, and authenticity. Us
       return NextResponse.json({ success: false, error: "Poor quality response" }, { status: 500 })
     }
 
-    // Small jitter to spread concurrent workers slightly
-    await sleep(60 + Math.floor(Math.random() * 120))
-
-    // CRITICAL: Check again right before posting to prevent race condition
-    // (Multiple webhooks may have passed the first check before any posted)
+    // FINAL: Check one more time right before posting to catch any race conditions
     console.log("[v0] Final duplicate check before posting...")
-    const alreadyRepliedNow = await hasAzuraAlreadyReplied(castHash, apiKey)
+    const alreadyRepliedNow = await hasAzuraAlreadyReplied(castHash, apiKey, botFid)
     if (alreadyRepliedNow) {
       console.log("[v0] Another instance already posted a reply, aborting")
       return NextResponse.json({ success: true, message: "Another instance handled this cast" })
