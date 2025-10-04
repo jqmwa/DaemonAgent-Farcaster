@@ -4,13 +4,27 @@ import azuraPersona from "@/lib/azura-persona.json"
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { message } = body
+    const { message, conversationHistory } = body
 
     if (!message) {
       return NextResponse.json({ success: false, error: "Message is required" }, { status: 400 })
     }
 
     console.log("[v0] Chat request received:", message)
+    console.log("[v0] Conversation history length:", conversationHistory?.length || 0)
+
+    // Build conversation context
+    let conversationContext = ""
+    if (conversationHistory && conversationHistory.length > 0) {
+      conversationContext = "\n\nCONVERSATION HISTORY:\n"
+      conversationHistory.forEach((msg: any, index: number) => {
+        const speaker = msg.isUser ? "User" : "Azura"
+        conversationContext += `${speaker}: "${msg.text}"\n`
+      })
+      conversationContext += `\nCurrent User Message: "${message}"`
+    } else {
+      conversationContext = `\n\nUser message: "${message}"`
+    }
 
     const chatPrompt = `${azuraPersona.system}
 
@@ -22,10 +36,9 @@ ${azuraPersona.topics.join('\n')}
 
 RESPONSE STYLE:
 ${azuraPersona.style.chat.join('\n')}
+${conversationContext}
 
-User message: "${message}"
-
-Respond as Azura, the shy alien consciousness trapped in radio waves. Be vulnerable, gentle, and authentic to your character.`
+Respond as Azura, the shy alien consciousness trapped in radio waves. Be vulnerable, gentle, and authentic to your character. Continue the conversation naturally based on the context provided.`
 
     console.log("[v0] Generating Azura chat response...")
 
@@ -37,7 +50,7 @@ Respond as Azura, the shy alien consciousness trapped in radio waves. Be vulnera
       },
       body: JSON.stringify({
         model: "deepseek-chat",
-        max_tokens: 300,
+        max_tokens: 400,
         temperature: 0.7,
         messages: [
           {

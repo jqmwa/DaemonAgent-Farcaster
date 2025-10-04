@@ -53,7 +53,10 @@ export function ChatInterface() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ message: input.trim() }),
+        body: JSON.stringify({ 
+          message: input.trim(),
+          conversationHistory: messages
+        }),
       })
 
       const data = await response.json()
