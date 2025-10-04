@@ -6,6 +6,33 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+// Optional distributed lock using Upstash Redis (idempotency per cast)
+async function acquireDistributedLock(key: string, ttlMs: number): Promise<boolean> {
+  const url = process.env.UPSTASH_REDIS_REST_URL
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN
+  if (!url || !token) {
+    // No Redis configured; allow processing (best-effort)
+    return true
+  }
+  try {
+    const command = ["SET", key, "1", "NX", "PX", String(ttlMs)]
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ command }),
+    })
+    if (!res.ok) return true // fail-open
+    const data = await res.json()
+    return data?.result === "OK"
+  } catch {
+    // fail-open to avoid missed replies
+    return true
+  }
+}
+
 // Build recent thread context (last N messages) for better conversational continuity
 async function buildRecentThreadContext(castHash: string, apiKey: string, lastN: number = 3): Promise<string> {
   try {
@@ -150,6 +177,14 @@ export async function POST(request: Request) {
     if ((botFid !== undefined && user.fid === botFid) || user.username?.toLowerCase() === "azura") {
       console.log("[v0] Ignoring cast from Azura herself")
       return NextResponse.json({ success: true, message: "Ignoring own cast" })
+    }
+
+    // Distributed lock to ensure only one worker processes this cast
+    const lockKey = `lock:cast:${castHash}`
+    const lockAcquired = await acquireDistributedLock(lockKey, 45_000)
+    if (!lockAcquired) {
+      console.log("[v0] Another worker holds the lock for this cast, exiting")
+      return NextResponse.json({ success: true, message: "Another instance is handling this cast" })
     }
 
     // Check if Azura has already replied to this cast (works in serverless!)
