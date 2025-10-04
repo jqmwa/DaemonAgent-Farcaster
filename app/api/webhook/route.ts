@@ -29,6 +29,15 @@ export async function POST(request: Request) {
     const castHash = cast.hash
     const castText = cast.text
 
+    // Prevent self-replies - get bot FID from environment or use a known value
+    const botFid = process.env.BOT_FID || "your_bot_fid_here"
+    
+    // Skip if this is a cast from our own bot
+    if (user.fid.toString() === botFid) {
+      console.log("[v0] Ignoring cast from bot itself")
+      return NextResponse.json({ success: true, message: "Ignored self-cast" })
+    }
+
     // Check if this is a mention or reply
     const isMention = castText.includes("@azura") || castText.toLowerCase().includes("@azura")
     const isReply = cast.parent_hash && cast.parent_hash.length > 0
@@ -61,12 +70,18 @@ export async function POST(request: Request) {
         const parentCastData = await parentCastResponse.json()
         const parentCast = parentCastData.cast
         
-        // Check if the parent cast is from our bot (you'll need to replace with your actual bot FID)
-        // For now, we'll respond to all replies and let the conversation flow naturally
-        shouldRespond = true
-        responseType = "reply"
+        console.log("[v0] Parent cast author FID:", parentCast.author.fid, "Bot FID:", botFid)
         
-        console.log("[v0] Reply to cast:", parentCast.author.username, "Original text:", parentCast.text.substring(0, 100))
+        // Check if the parent cast is from our bot
+        if (parentCast.author.fid.toString() === botFid) {
+          shouldRespond = true
+          responseType = "reply"
+          console.log("[v0] Reply to our cast from:", parentCast.author.username, "Original text:", parentCast.text.substring(0, 100))
+        } else {
+          console.log("[v0] Reply to someone else's cast, not responding")
+        }
+      } else {
+        console.log("[v0] Could not fetch parent cast")
       }
     }
 
