@@ -48,9 +48,46 @@ export async function POST(request: Request) {
     if (isMention) {
       shouldRespond = true
       responseType = "mention"
+      console.log("[v0] Responding to mention")
     } else if (isReply) {
-      shouldRespond = true
-      responseType = "reply"
+      // Check if this is a reply to a cast that mentions Azura or to Azura's own cast
+      try {
+        const parentCastResponse = await fetch(`https://api.neynar.com/v2/farcaster/cast?identifier=${cast.parent_hash}&type=hash`, {
+          headers: {
+            accept: "application/json",
+            "x-api-key": apiKey,
+          },
+        })
+
+        if (parentCastResponse.ok) {
+          const parentCastData = await parentCastResponse.json()
+          const parentCast = parentCastData.cast
+          const parentText = parentCast.text.toLowerCase()
+          
+          // Check if parent cast mentions Azura or if it's from Azura
+          const parentMentionsAzura = parentText.includes("@azura") || parentText.includes("azura")
+          const parentFromAzura = parentCast.author.username === "azura" || parentCast.author.username === "azuras.eth"
+          
+          console.log("[v0] Parent cast analysis:", {
+            author: parentCast.author.username,
+            parentMentionsAzura,
+            parentFromAzura,
+            parentText: parentCast.text.substring(0, 100)
+          })
+          
+          if (parentMentionsAzura || parentFromAzura) {
+            shouldRespond = true
+            responseType = "reply"
+            console.log("[v0] Responding to reply in Azura thread")
+          } else {
+            console.log("[v0] Not responding - parent cast doesn't involve Azura")
+          }
+        } else {
+          console.log("[v0] Could not fetch parent cast, not responding to reply")
+        }
+      } catch (error) {
+        console.log("[v0] Error checking parent cast:", error)
+      }
     }
 
     if (!shouldRespond) {
