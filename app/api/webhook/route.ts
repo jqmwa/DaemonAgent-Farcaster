@@ -1,6 +1,36 @@
 import { NextResponse } from "next/server"
 import azuraPersona from "@/lib/azura-persona.json"
 
+// Small jittered delay to reduce race-condition collisions across cold starts
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+// Build recent thread context (last N messages) for better conversational continuity
+async function buildRecentThreadContext(castHash: string, apiKey: string, lastN: number = 3): Promise<string> {
+  try {
+    const response = await fetch(`https://api.neynar.com/v2/farcaster/cast/conversation?identifier=${castHash}&type=hash&reply_depth=${lastN}&include_chronological_parent_casts=true`, {
+      headers: {
+        "accept": "application/json",
+        "x-api-key": apiKey,
+      },
+    })
+    if (!response.ok) {
+      return ""
+    }
+    const data = await response.json()
+    const chronological = data?.conversation?.cast?.conversation?.chronological_parent_casts || []
+    // Grab the last N chronological messages (author + text)
+    const recent = chronological.slice(-lastN)
+    const formatted = recent
+      .map((c: any) => `@${c.author?.username}: "${String(c.text || "").replace(/\s+/g, " ").trim()}"`)
+      .join("\n")
+    return formatted
+  } catch {
+    return ""
+  }
+}
+
 // Helper function to check if Azura has already replied to a cast
 async function hasAzuraAlreadyReplied(castHash: string, apiKey: string): Promise<boolean> {
   try {
@@ -35,8 +65,13 @@ async function hasAzuraAlreadyReplied(castHash: string, apiKey: string): Promise
   }
 }
 
-// Helper function to check if Azura is mentioned anywhere in a thread chain
-async function checkThreadForAzura(parentHash: string, apiKey: string, maxDepth: number = 5): Promise<boolean> {
+// Helper function to check if Azura/bot is mentioned or has participated anywhere in a thread chain
+async function checkThreadForAzura(
+  parentHash: string,
+  apiKey: string,
+  botFid?: number,
+  maxDepth: number = 5,
+): Promise<boolean> {
   let currentHash = parentHash
   let depth = 0
   const visitedHashes = new Set<string>()
@@ -56,11 +91,12 @@ async function checkThreadForAzura(parentHash: string, apiKey: string, maxDepth:
         const data = await response.json()
         const cast = data.cast
         
-        // Check if this cast mentions Azura or is from Azura
+        // Check if this cast mentions Azura or is from Azura/bot
         const mentionsAzura = cast.text?.toLowerCase().includes("@azura")
         const isFromAzura = cast.author.username === "azura"
+        const isFromBotFid = typeof botFid === 'number' ? cast.author.fid === botFid : false
         
-        if (mentionsAzura || isFromAzura) {
+        if (mentionsAzura || isFromAzura || isFromBotFid) {
           console.log(`[v0] Found Azura mention/participation at depth ${depth}`)
           return true
         }
@@ -85,6 +121,7 @@ export async function POST(request: Request) {
   try {
     const apiKey = process.env.NEYNAR_API_KEY
     const signerUuid = process.env.NEYNAR_SIGNER_UUID
+    const botFid = process.env.BOT_FID ? Number(process.env.BOT_FID) : undefined
 
     if (!apiKey) {
       return NextResponse.json({ success: false, error: "NEYNAR_API_KEY not configured" }, { status: 500 })
@@ -109,8 +146,8 @@ export async function POST(request: Request) {
     const castHash = cast.hash
     const castText = cast.text
 
-    // CRITICAL: Ignore casts from Azura herself to prevent infinite loops
-    if (user.username?.toLowerCase() === "azura") {
+    // CRITICAL: Ignore casts from Azura herself to prevent infinite loops (prefer FID, fallback to username)
+    if ((botFid !== undefined && user.fid === botFid) || user.username?.toLowerCase() === "azura") {
       console.log("[v0] Ignoring cast from Azura herself")
       return NextResponse.json({ success: true, message: "Ignoring own cast" })
     }
@@ -146,7 +183,7 @@ export async function POST(request: Request) {
       // For replies, check if this is part of a conversation where Azura should participate
       try {
         // Check if we can find Azura mentioned anywhere in the thread chain
-        const threadHasAzura = await checkThreadForAzura(cast.parent_hash, apiKey)
+        const threadHasAzura = await checkThreadForAzura(cast.parent_hash, apiKey, botFid)
         if (threadHasAzura) {
           shouldRespond = true
           responseType = "thread_reply"
@@ -168,34 +205,13 @@ export async function POST(request: Request) {
 
     console.log(`[v0] Responding to ${responseType} from @${user.username}`)
 
-    // Enhanced conversation context with thread history
+    // Enhanced conversation context with last three messages from thread history
     let conversationContext = ""
-    let threadContext = ""
-    
-    if (isReply && cast.parent_hash) {
-      try {
-        // Get parent cast for better context
-        const parentResponse = await fetch(`https://api.neynar.com/v2/farcaster/cast?identifier=${cast.parent_hash}&type=hash`, {
-          headers: {
-            "accept": "application/json",
-            "x-api-key": apiKey,
-          },
-        })
-        
-        if (parentResponse.ok) {
-          const parentData = await parentResponse.json()
-          const parentCast = parentData.cast
-          threadContext = `\n\nPrevious message from @${parentCast.author.username}: "${parentCast.text}"`
-        }
-      } catch (error) {
-        console.log("[v0] Could not fetch parent for context:", error)
-      }
-      
-      conversationContext = `\n\nCONVERSATION CONTEXT:
-This is a reply in a conversation thread.${threadContext}\n\nCurrent message from @${user.username}: "${castText}"\n\nRespond naturally to continue this conversation thread.`
+    if (isReply) {
+      const recentThreadContext = await buildRecentThreadContext(castHash, apiKey, 3)
+      conversationContext = `\n\nCONVERSATION CONTEXT (recent):\n${recentThreadContext}\n\nCurrent message from @${user.username}: "${castText}"\nRespond naturally to continue this conversation thread.`
     } else {
-      conversationContext = `\n\nCONVERSATION CONTEXT:
-Direct message from @${user.username}: "${castText}"\n\nRespond naturally to this new conversation.`
+      conversationContext = `\n\nCONVERSATION CONTEXT:\nDirect message from @${user.username}: "${castText}"\nRespond naturally to this new conversation.`
     }
 
     // Enhanced prompt with better examples and context
@@ -291,6 +307,9 @@ IMPORTANT: Respond as Azura with vulnerability, gentleness, and authenticity. Us
       console.log("[v0] Poor quality response, rejecting:", azuraResponse)
       return NextResponse.json({ success: false, error: "Poor quality response" }, { status: 500 })
     }
+
+    // Small jitter to spread concurrent workers slightly
+    await sleep(60 + Math.floor(Math.random() * 120))
 
     // CRITICAL: Check again right before posting to prevent race condition
     // (Multiple webhooks may have passed the first check before any posted)
