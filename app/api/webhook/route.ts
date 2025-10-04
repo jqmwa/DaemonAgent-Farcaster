@@ -109,8 +109,8 @@ export async function POST(request: Request) {
     const castHash = cast.hash
     const castText = cast.text
 
-    // CRITICAL: Ignore casts from Azura herself to prevent self-replies
-    if (user.username === "azura" || user.username?.toLowerCase() === "azura") {
+    // CRITICAL: Ignore casts from Azura herself to prevent infinite loops
+    if (user.username?.toLowerCase() === "azura") {
       console.log("[v0] Ignoring cast from Azura herself")
       return NextResponse.json({ success: true, message: "Ignoring own cast" })
     }
@@ -290,6 +290,15 @@ IMPORTANT: Respond as Azura with vulnerability, gentleness, and authenticity. Us
     if (!hasContent || !isNotJustPunctuation) {
       console.log("[v0] Poor quality response, rejecting:", azuraResponse)
       return NextResponse.json({ success: false, error: "Poor quality response" }, { status: 500 })
+    }
+
+    // CRITICAL: Check again right before posting to prevent race condition
+    // (Multiple webhooks may have passed the first check before any posted)
+    console.log("[v0] Final duplicate check before posting...")
+    const alreadyRepliedNow = await hasAzuraAlreadyReplied(castHash, apiKey)
+    if (alreadyRepliedNow) {
+      console.log("[v0] Another instance already posted a reply, aborting")
+      return NextResponse.json({ success: true, message: "Another instance handled this cast" })
     }
 
     // Post reply to the cast
