@@ -293,17 +293,27 @@ export async function POST(request: Request) {
     const castText = cast.text || ""
     const channel = cast.parent_url || cast.channel?.parent_url || ""
     
-    
-    // IGNORE OWN CASTS (prevent self-replies)
+    // IMMEDIATE SELF-CAST CHECK (prevent any processing of own casts)
     const authorUsername = author.username?.toLowerCase() || ""
-    const isOwnCast = authorUsername === "azura" || 
-                      authorUsername === "azuras.eth" ||
-                      authorUsername.includes("azura")
-    if (isOwnCast) {
+    if (authorUsername === "azura" || authorUsername === "azuras.eth" || authorUsername.includes("azura")) {
       return NextResponse.json({ 
         success: true, 
-        message: "Ignored own cast",
-        author: author.username 
+        message: "BLOCKED: Own cast detected immediately",
+        author: author.username
+      })
+    }
+    
+    // ADDITIONAL FID-BASED CHECK
+    const authorFid = author.fid
+    const botFid = process.env.BOT_FID ? Number(process.env.BOT_FID) : null
+    
+    if (botFid && authorFid === botFid) {
+      return NextResponse.json({ 
+        success: true, 
+        message: "BLOCKED: Own FID detected",
+        author: author.username,
+        fid: authorFid,
+        botFid: botFid
       })
     }
     
