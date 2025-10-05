@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import azuraPersona from "@/lib/azura-persona.json"
 
-// MULTI-LAYER DEDUPLICATION
+// MULTI-LAYER DEDUPLICATION + FAIL-SAFE
 // Layer 1: Event ID tracking (webhooks may send duplicate events)
 const processedEvents = new Set<string>()
 
@@ -11,6 +11,11 @@ const DEDUP_WINDOW = 180000 // 3 minutes
 
 // Layer 3: Processing locks (prevent concurrent processing of same cast)
 const processingLocks = new Set<string>()
+
+// FAIL-SAFE: Emergency brake to prevent spam
+const responseCounter = new Map<string, number>()
+const MAX_RESPONSES_PER_MINUTE = 10
+const EMERGENCY_STOP = process.env.EMERGENCY_STOP === "true"
 
 function cleanupOldEntries() {
   const now = Date.now()
@@ -50,6 +55,31 @@ function wasRecentlyProcessed(castHash: string, eventId?: string): boolean {
   }
   
   return false
+}
+
+function checkEmergencyStop(): boolean {
+  if (EMERGENCY_STOP) {
+    return true
+  }
+  
+  const now = Date.now()
+  const minuteAgo = now - 60000
+  
+  // Count responses in last minute
+  let recentResponses = 0
+  for (const [timestamp, count] of responseCounter.entries()) {
+    if (parseInt(timestamp) > minuteAgo) {
+      recentResponses += count
+    }
+  }
+  
+  return recentResponses >= MAX_RESPONSES_PER_MINUTE
+}
+
+function recordResponse() {
+  const now = Date.now()
+  const minute = Math.floor(now / 60000) * 60000
+  responseCounter.set(minute.toString(), (responseCounter.get(minute.toString()) || 0) + 1)
 }
 
 // Check if Azura already replied via API
@@ -293,6 +323,15 @@ export async function POST(request: Request) {
     const castText = cast.text || ""
     const channel = cast.parent_url || cast.channel?.parent_url || ""
     
+    // EMERGENCY STOP CHECK
+    if (checkEmergencyStop()) {
+      return NextResponse.json({ 
+        success: true, 
+        message: "EMERGENCY STOP: Too many responses per minute",
+        emergencyStop: true
+      })
+    }
+
     // IMMEDIATE SELF-CAST CHECK (prevent any processing of own casts)
     const authorUsername = author.username?.toLowerCase() || ""
     if (authorUsername === "azura" || authorUsername === "azuras.eth" || authorUsername.includes("azura")) {
@@ -409,6 +448,7 @@ export async function POST(request: Request) {
     
     // MARK AS PROCESSED
     markAsProcessed(castHash, eventId)
+    recordResponse()
     
     return NextResponse.json({
       success: true,
