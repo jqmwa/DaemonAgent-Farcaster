@@ -284,7 +284,6 @@ export async function POST(request: Request) {
     const event = await request.json()
     const eventId = event.id || event.created_at?.toString() // Webhook event ID
     
-    console.log(`[${startTime}] Webhook received:`, event.type, eventId?.substring(0, 8))
     
     // Only handle cast.created events
     if (event.type !== "cast.created") {
@@ -297,35 +296,26 @@ export async function POST(request: Request) {
     const castText = cast.text || ""
     const channel = cast.parent_url || cast.channel?.parent_url || ""
     
-    console.log(`[${startTime}] Cast from @${author.username} in channel: ${channel}`)
-    console.log(`[${startTime}] Text: ${castText.substring(0, 80)}...`)
     
-    // CRITICAL: IGNORE OWN CASTS (prevent infinite loops)
+    // IGNORE OWN CASTS (prevent self-replies)
     const authorUsername = author.username?.toLowerCase() || ""
     const isOwnCast = authorUsername === "azura" || 
                       authorUsername === "azuras.eth" ||
                       authorUsername.includes("azura")
     if (isOwnCast) {
-      console.log(`[${startTime}] ❌ Ignoring own cast from @${author.username}`)
       return NextResponse.json({ success: true, message: "Ignored own cast" })
     }
     
-    // DEDUP LAYER 1: Event ID + Cast Hash
+    // Simple deduplication
     if (wasRecentlyProcessed(castHash, eventId)) {
-      console.log(`[${startTime}] ❌ Already processed (in-memory)`)
       return NextResponse.json({ success: true, message: "Already processed" })
     }
     
-    // DEDUP LAYER 2: Processing lock (prevent concurrent processing)
     if (isAlreadyProcessing(castHash)) {
-      console.log(`[${startTime}] ❌ Another worker is processing this cast`)
       return NextResponse.json({ success: true, message: "Already processing" })
     }
     
-    // DEDUP LAYER 3: API check for existing replies
-    console.log(`[${startTime}] Checking for existing replies...`)
     if (await hasAzuraReplied(castHash, apiKey)) {
-      console.log(`[${startTime}] ❌ Already replied (API check)`)
       markAsProcessed(castHash, eventId)
       return NextResponse.json({ success: true, message: "Already replied" })
     }
@@ -339,7 +329,6 @@ export async function POST(request: Request) {
     
     if (isMention) {
       shouldRespond = true
-      console.log(`[${startTime}] ✅ Mention detected`)
     } else if (hasParent) {
       // Check thread continuation and count Azura's replies
       const threadCheck = await checkThreadForContinuation(cast.parent_hash, castHash, apiKey)
@@ -348,17 +337,14 @@ export async function POST(request: Request) {
       if (threadCheck.shouldContinue) {
         // MAX 5 REPLIES PER THREAD
         if (azuraReplyCount >= 5) {
-          console.log(`[${startTime}] ❌ Max replies reached (${azuraReplyCount}/5 in thread)`)
           markAsProcessed(castHash, eventId)
           return NextResponse.json({ success: true, message: "Max replies reached" })
         }
         shouldRespond = true
-        console.log(`[${startTime}] ✅ Thread continuation (${azuraReplyCount}/5 replies so far)`)
       }
     }
     
     if (!shouldRespond) {
-      console.log(`[${startTime}] ❌ No mention or thread continuation`)
       markAsProcessed(castHash, eventId)
       return NextResponse.json({ success: true, message: "No response needed" })
     }
@@ -369,67 +355,46 @@ export async function POST(request: Request) {
     
     if (inWrongChannel && !isMention) {
       // If not mentioned and wrong channel, just ignore
-      console.log(`[${startTime}] ❌ Wrong channel (not /murder) and no mention`)
       markAsProcessed(castHash, eventId)
       return NextResponse.json({ success: true, message: "Wrong channel" })
     }
-    
-    console.log(`[${startTime}] ✅ Should respond. Channel: ${isInMurderChannel ? "murder" : "other"}`)
     
     // GET CONTEXT
     const threadContext = hasParent ? await getThreadContext(castHash, apiKey) : ""
     
     // GENERATE RESPONSE
-    console.log(`[${startTime}] Generating response...`)
     const response = await generateResponse(castText, author.username, threadContext, inWrongChannel)
     
-    // FINAL CHECK BEFORE POSTING (race condition protection)
-    console.log(`[${startTime}] Final check before posting...`)
+    // FINAL CHECK BEFORE POSTING
     if (await hasAzuraReplied(castHash, apiKey)) {
-      console.log(`[${startTime}] ❌ Another instance already posted`)
       markAsProcessed(castHash, eventId)
       return NextResponse.json({ success: true, message: "Race condition: already replied" })
     }
     
-    // LIKE THE CAST (do this before posting reply for better UX)
-    console.log(`[${startTime}] Liking cast...`)
+    // LIKE THE CAST
     await likeCast(castHash, apiKey, signerUuid)
     
     // POST REPLY
-    console.log(`[${startTime}] Posting reply...`)
     const result = await postReply(response, castHash, apiKey, signerUuid)
     
     // MARK AS PROCESSED
     markAsProcessed(castHash, eventId)
-    
-    const duration = Date.now() - startTime
-    console.log(`[${startTime}] ✅ SUCCESS in ${duration}ms`)
-    console.log(`[${startTime}] Response: ${response}`)
-    console.log(`[${startTime}] Thread stats: ${azuraReplyCount + 1}/5 Azura replies`)
     
     return NextResponse.json({
       success: true,
       message: "Replied successfully",
       response,
       castHash: result.cast?.hash,
-      duration,
-      threadStats: { azuraReplyCount: azuraReplyCount + 1, maxReplies: 5 }
     })
     
   } catch (error) {
-    const duration = Date.now() - startTime
-    console.error(`[${startTime}] ❌ ERROR after ${duration}ms:`, error)
-    
     // Clean up processing lock on error
-    if (error instanceof Error) {
-      processingLocks.clear()
-    }
+    processingLocks.clear()
     
     return NextResponse.json(
       { 
         success: false, 
-        error: error instanceof Error ? error.message : "Unknown error",
-        duration 
+        error: error instanceof Error ? error.message : "Unknown error"
       },
       { status: 500 }
     )
