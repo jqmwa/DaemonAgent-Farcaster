@@ -3,37 +3,6 @@
 ## ✅ Server Status
 The development server is now running at: **http://localhost:3000**
 
-## 🔧 Setup Instructions
-
-### 1. Environment Configuration
-You need to create a `.env.local` file with your API keys:
-
-```bash
-# Copy the template
-cp env.template .env.local
-
-# Edit with your actual API keys
-nano .env.local
-```
-
-### 2. Required API Keys
-
-#### Neynar API (Required)
-- **NEYNAR_API_KEY**: Get from https://neynar.com/
-- **NEYNAR_SIGNER_UUID**: Get from https://neynar.com/
-
-#### Claude API (Required for Jung-style analysis)
-- **CLAUDE_API_KEY**: Get from https://console.anthropic.com/
-
-#### OpenAI API (Optional - for other endpoints)
-- **OPENAI_API_KEY**: Get from https://platform.openai.com/
-
-### 3. Testing the Application
-
-1. **Open your browser** and go to: http://localhost:3000
-2. **Click "Summon Prey"** to fetch users from the /politics channel
-3. **Click "Cast Daemon"** to analyze the selected user's psychological patterns
-4. **Check the console** for detailed logs of the process
 
 ### 4. API Endpoints Available
 

@@ -387,12 +387,12 @@ export async function POST(request: Request) {
       azuraReplyCount = threadCheck.azuraReplyCount
       
       if (threadCheck.shouldContinue) {
-        // MAX 5 REPLIES PER THREAD
-        if (azuraReplyCount >= 5) {
+        // MAX 3 REPLIES PER THREAD (user>azura>user>azura>user>azura)
+        if (azuraReplyCount >= 3) {
           markAsProcessed(castHash, eventId)
           return NextResponse.json({ 
             success: true, 
-            message: "Max replies reached",
+            message: "Max replies reached (3 reply limit)",
             reason: "max_replies",
             count: azuraReplyCount
           })
