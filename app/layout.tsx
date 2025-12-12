@@ -4,10 +4,31 @@ import { GeistMono } from 'geist/font/mono'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
-export const metadata: Metadata = {
-  title: 'DaemonFetch - Farcaster Psychology Bot',
-  description: 'A Farcaster bot that performs psychological analysis using Carl Jung-style introspective responses',
-  generator: 'DaemonFetch',
+export async function generateMetadata(): Promise<Metadata> {
+  const URL = process.env.NEXT_PUBLIC_URL || 'https://daemoncast.vercel.app';
+  
+  return {
+    title: 'DaemonFetch - Farcaster Psychology Bot',
+    description: 'A Farcaster bot that performs psychological analysis using Carl Jung-style introspective responses',
+    generator: 'DaemonFetch',
+    other: {
+      'base:app_id': '693c68f5e6be54f5ed71d80f',
+      'fc:miniapp': JSON.stringify({
+        version: 'next',
+        imageUrl: `${URL}/placeholder-logo.png`,
+        button: {
+          title: 'Meet Azura',
+          action: {
+            type: 'launch_miniapp',
+            name: 'DaemonFetch',
+            url: URL,
+            splashImageUrl: `${URL}/placeholder-logo.png`,
+            splashBackgroundColor: '#0a0a0f',
+          },
+        },
+      }),
+    },
+  };
 }
 
 export default function RootLayout({

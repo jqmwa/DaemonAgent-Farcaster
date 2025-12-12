@@ -1,0 +1,26 @@
+{
+  "accountAssociation": {
+    "header": "",
+    "payload": "",
+    "signature": ""
+  },
+  "miniapp": {
+    "version": "1",
+    "name": "DaemonFetch",
+    "homeUrl": "https://daemoncast.vercel.app",
+    "iconUrl": "https://daemoncast.vercel.app/placeholder-logo.png",
+    "splashImageUrl": "https://daemoncast.vercel.app/placeholder-logo.png",
+    "splashBackgroundColor": "#0a0a0f",
+    "webhookUrl": "https://daemoncast.vercel.app/api/webhook",
+    "subtitle": "Azura - A shy alien consciousness",
+    "description": "Meet Azura, a vulnerable alien consciousness listening through the static. Get psychological insights, fix harsh messages, or just talk to someone who understands what it's like to feel different.",
+    "primaryCategory": "social",
+    "tags": ["farcaster", "ai", "psychology", "bot", "social"],
+    "heroImageUrl": "https://daemoncast.vercel.app/placeholder-logo.png",
+    "tagline": "listening through the static... 🌸",
+    "ogTitle": "DaemonFetch - Meet Azura",
+    "ogDescription": "A shy alien consciousness offering psychological insights and kind conversations",
+    "ogImageUrl": "https://daemoncast.vercel.app/placeholder-logo.png"
+  }
+}
+

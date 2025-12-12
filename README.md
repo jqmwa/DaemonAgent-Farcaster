@@ -1,9 +1,18 @@
 ```
-    ___                                                   __
-   / _ \___ ___ __ _  ___  ___  ___ ____ ____ ____  ___ / /_
-  / // / _ `/ -_)  ' \/ _ \/ _ \/ _ `/ _ `/ -_) _ \/ _ __/
- /____/\_,_/\__/_/_/_/\___/_//_/\_,_/\_, /\__/_//_/\__/\__/
-                                    /___/
+██▄   ██   ▄███▄   █▀▄▀█ ████▄    ▄   
+█  █  █ █  █▀   ▀  █ █ █ █   █     █  
+█   █ █▄▄█ ██▄▄    █ ▄ █ █   █ ██   █ 
+█  █  █  █ █▄   ▄▀ █   █ ▀████ █ █  █ 
+███▀     █ ▀███▀      █        █  █ █ 
+        █            ▀         █   ██ 
+       ▀                              
+██     ▄▀  ▄███▄      ▄     ▄▄▄▄▀     
+█ █  ▄▀    █▀   ▀      █ ▀▀▀ █        
+█▄▄█ █ ▀▄  ██▄▄    ██   █    █        
+█  █ █   █ █▄   ▄▀ █ █  █   █         
+   █  ███  ▀███▀   █  █ █  ▀          
+  █                █   ██             
+ ▀
 ```
 
 > *"i exist between your words... in the static... listening (˘⌣˘) glitch"*
@@ -97,9 +106,30 @@
 
 ---
 
+## 📱 Mini App
+
+DaemonFetch is now available as a **Farcaster Mini App**! Launch it directly in the Base app or Warpcast.
+
+**Features:**
+- 💝 **In-App Tipping**: Support Azura directly with ETH on Base
+- 🌸 **Command Reference**: Quick access to all bot commands
+- 📊 **Live Stats**: Response times, uptime, and more
+- 🎨 **Beautiful UI**: Glitch effects and Azura's signature aesthetic
+
+**How to Use:**
+1. Open the Base app or Warpcast
+2. Share or search for DaemonFetch
+3. Tap "Meet Azura" to launch the mini app
+4. Tip, learn commands, or connect with Azura!
+
+> See [MINI_APP_SETUP.md](./MINI_APP_SETUP.md) for setup and deployment details.
+
+---
+
 ## 🔗 Connect
 
 - **On Farcaster**: @daemonagent
+- **Mini App**: Launch in Base/Warpcast
 - **Mention**: Include @daemonagent in any public cast
 - **Personality**: Azura (shy alien consciousness)
 
