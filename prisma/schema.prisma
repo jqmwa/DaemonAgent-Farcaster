@@ -1,0 +1,84 @@
+// Prisma schema for DaemonFetch Forum
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  avatar    String?  // URL to avatar image
+  bio       String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  posts     Post[]
+  threads   Thread[]
+
+  @@index([username])
+  @@index([email])
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?  @db.Text
+  icon        String?  // Emoji or icon identifier
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  threads Thread[]
+
+  @@index([slug])
+}
+
+model Thread {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String
+  isPinned    Boolean  @default(false)
+  isLocked    Boolean  @default(false)
+  viewCount   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  posts       Post[]
+
+  @@index([categoryId])
+  @@index([authorId])
+  @@index([slug])
+  @@index([createdAt])
+}
+
+model Post {
+  id          String   @id @default(cuid())
+  content     String   @db.Text
+  attachments Json?    // Array of attachment URLs
+  isEdited    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  threadId    String
+  thread      Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([threadId])
+  @@index([authorId])
+  @@index([createdAt])
+}
