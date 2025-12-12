@@ -137,6 +137,8 @@ export default function Home() {
   const shortAddress = TIP_ADDRESS.slice(0, 10) + '...' + TIP_ADDRESS.slice(-6)
 
   const URL = process.env.NEXT_PUBLIC_URL || 'https://daemoncast.vercel.app'
+  // Cache-busting for OG image - update this when image changes
+  const OG_IMAGE_VERSION = 'v2'
 
   return (
     <>
@@ -146,7 +148,7 @@ export default function Home() {
           name="fc:miniapp" 
           content={JSON.stringify({
             version: 'next',
-            imageUrl: `${URL}/ogimage.png`,
+            imageUrl: `${URL}/ogimage.png?v=${OG_IMAGE_VERSION}`,
             button: {
               title: 'View Commands',
               action: {
