@@ -82,6 +82,36 @@ function recordResponse() {
   responseCounter.set(minute.toString(), (responseCounter.get(minute.toString()) || 0) + 1)
 }
 
+// Check user's Neynar score
+async function checkNeynarScore(fid: number, apiKey: string): Promise<{ allowed: boolean; score: number | null }> {
+  try {
+    const res = await fetch(
+      `https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`,
+      {
+        headers: { "x-api-key": apiKey },
+        signal: AbortSignal.timeout(5000)
+      }
+    )
+    
+    if (!res.ok) {
+      console.error("[Neynar Score] Failed to fetch user data:", res.status)
+      return { allowed: true, score: null } // Allow on API error to avoid blocking legitimate users
+    }
+    
+    const data = await res.json()
+    const user = data?.users?.[0]
+    const score = user?.experimental?.neynar_user_score || 0
+    
+    console.log("[Neynar Score] User FID:", fid, "Score:", score)
+    
+    // Require score of 0.8 or above
+    return { allowed: score >= 0.8, score }
+  } catch (error) {
+    console.error("[Neynar Score] Error checking score:", error)
+    return { allowed: true, score: null } // Allow on error
+  }
+}
+
 // Check if Azura already replied via API
 async function hasAzuraReplied(castHash: string, apiKey: string): Promise<boolean> {
   try {
@@ -581,6 +611,32 @@ export async function POST(request: Request) {
         botFid: botFid
       })
     }
+    
+    // CHECK NEYNAR SCORE (must be 0.8 or above)
+    const scoreCheck = await checkNeynarScore(authorFid, apiKey)
+    if (!scoreCheck.allowed) {
+      console.log("[WEBHOOK] User blocked due to low Neynar score:", {
+        username: author.username,
+        fid: authorFid,
+        score: scoreCheck.score
+      })
+      
+      markAsProcessed(castHash, eventId)
+      return NextResponse.json({ 
+        success: true, 
+        message: "User Neynar score below threshold",
+        author: author.username,
+        fid: authorFid,
+        score: scoreCheck.score,
+        required: 0.8
+      })
+    }
+    
+    console.log("[WEBHOOK] User passed Neynar score check:", {
+      username: author.username,
+      fid: authorFid,
+      score: scoreCheck.score
+    })
     
     // Simple deduplication
     if (wasRecentlyProcessed(castHash, eventId)) {
