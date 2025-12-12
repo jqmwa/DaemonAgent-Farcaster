@@ -10,6 +10,75 @@ import farcasterPlugin from '@elizaos/plugin-farcaster';
 import { AgentRuntime, Character, DatabaseAdapter } from '@elizaos/core';
 import elizaCharacter from './eliza-character.json';
 
+/**
+ * Minimal database adapter for webhook/serverless mode
+ * Implements required methods without actual database connection
+ */
+class MinimalAdapter extends DatabaseAdapter {
+  private agentId: string | null = null;
+  private agentData: any = null;
+
+  constructor() {
+    super();
+  }
+
+  async isReady(): Promise<boolean> {
+    return true;
+  }
+
+  async getAgent(agentId: string): Promise<any> {
+    if (this.agentId === agentId && this.agentData) {
+      return this.agentData;
+    }
+    // Return minimal agent data
+    return {
+      id: agentId,
+      name: elizaCharacter.name,
+      username: elizaCharacter.username,
+    };
+  }
+
+  async createAgent(agent: any): Promise<any> {
+    this.agentId = agent.id;
+    this.agentData = agent;
+    return agent;
+  }
+
+  async updateAgent(agentId: string, agent: any): Promise<any> {
+    if (this.agentId === agentId) {
+      this.agentData = { ...this.agentData, ...agent };
+    }
+    return this.agentData || agent;
+  }
+
+  // Stub methods for plugin migrations (not needed for webhook mode)
+  async runMigrations(migrations: any[]): Promise<void> {
+    // No-op for webhook mode
+    return;
+  }
+
+  // Add other required methods as stubs
+  async getMemory(params: any): Promise<any[]> {
+    return [];
+  }
+
+  async createMemory(memory: any): Promise<any> {
+    return memory;
+  }
+
+  async removeMemory(memoryId: string): Promise<void> {
+    // No-op
+  }
+
+  async getCachedEmbeddings(params: any): Promise<any[]> {
+    return [];
+  }
+
+  async createCachedEmbedding(embedding: any): Promise<any> {
+    return embedding;
+  }
+}
+
 export class ElizaService {
   private runtime: AgentRuntime | null = null;
   private initialized: boolean = false;
@@ -66,36 +135,44 @@ export class ElizaService {
         clientConfig: elizaCharacter.clientConfig
       } as Character;
 
-      // Create database adapter and ensure it has isReady method
-      const adapter = new DatabaseAdapter();
+      // Create minimal adapter for webhook/serverless mode
+      // This adapter implements all required methods without a real database
+      console.log('[ElizaOS] Creating minimal adapter for webhook mode...');
+      const adapter = new MinimalAdapter();
       
-      // Add isReady method if it doesn't exist (required by Farcaster plugin)
-      if (typeof (adapter as any).isReady !== 'function') {
-        (adapter as any).isReady = async () => {
-          // For webhook mode, we can assume adapter is always ready
-          // In a real implementation, this would check database connection
-          return true;
-        };
-      }
-      
-      // Initialize adapter if it has an initialize method
-      if (typeof (adapter as any).initialize === 'function') {
+      // Initialize adapter if needed
+      if (typeof adapter.initialize === 'function') {
         try {
-          await (adapter as any).initialize();
+          await adapter.initialize();
+          console.log('[ElizaOS] Minimal adapter initialized');
         } catch (initError) {
-          console.warn('[ElizaOS] Adapter initialization warning (continuing anyway):', initError);
+          console.warn('[ElizaOS] Adapter initialization warning (continuing):', initError);
         }
       }
 
       // Create runtime instance
+      console.log('[ElizaOS] Creating AgentRuntime with adapter...');
       this.runtime = new AgentRuntime({
         character,
         adapter,
         plugins: [farcasterPlugin],
       });
 
-      // Initialize plugins
-      await this.runtime.initialize();
+      // Initialize plugins - this is where adapter.isReady() might be called
+      console.log('[ElizaOS] Initializing runtime (this may call adapter.isReady)...');
+      try {
+        await this.runtime.initialize();
+        console.log('[ElizaOS] Runtime initialized successfully');
+      } catch (initError: any) {
+        console.error('[ElizaOS] Runtime initialization failed:', initError);
+        console.error('[ElizaOS] Error details:', {
+          message: initError?.message,
+          stack: initError?.stack,
+          adapterType: adapter?.constructor?.name,
+          hasIsReady: typeof (adapter as any)?.isReady === 'function'
+        });
+        throw initError;
+      }
 
       this.initialized = true;
       console.log('[ElizaOS] Service initialized successfully');
