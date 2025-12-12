@@ -15,14 +15,14 @@ export async function generateMetadata(): Promise<Metadata> {
       'base:app_id': '693c68f5e6be54f5ed71d80f',
       'fc:miniapp': JSON.stringify({
         version: 'next',
-        imageUrl: `${URL}/placeholder-logo.png`,
+        imageUrl: `${URL}/azura-pfp.png`,
         button: {
-          title: 'Meet Azura',
+          title: 'View Commands',
           action: {
             type: 'launch_miniapp',
-            name: 'DaemonFetch',
+            name: 'Azura Commands',
             url: URL,
-            splashImageUrl: `${URL}/placeholder-logo.png`,
+            splashImageUrl: `${URL}/azura-pfp.png`,
             splashBackgroundColor: '#0a0a0f',
           },
         },
