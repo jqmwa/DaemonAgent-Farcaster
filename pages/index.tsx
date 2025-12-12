@@ -16,7 +16,7 @@ const Model3DViewer = dynamic(() => import('@/components/Model3DViewer'), {
 })
 
 // 💝 Configure your tip address here
-const TIP_ADDRESS = '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb' // ETH Base address
+const TIP_ADDRESS = '0xE376641E65a47a8104bE75D8E4E18e68aaC899aB' // ETH Base address
 
 // Rotating status messages
 const STATUS_MESSAGES = [
@@ -33,7 +33,6 @@ export default function Home() {
   const [glitchText, setGlitchText] = useState(false)
   const [copied, setCopied] = useState(false)
   const [isMiniApp, setIsMiniApp] = useState(false)
-  const [tipping, setTipping] = useState(false)
   const [statusMessageIndex, setStatusMessageIndex] = useState(0)
   const [userProfile, setUserProfile] = useState<{
     displayName?: string
@@ -87,51 +86,32 @@ export default function Home() {
     }
   }, [])
 
-  const handleTip = async () => {
-    if (isMiniApp) {
-      // In-app tipping using MiniApp SDK
-      try {
-        setTipping(true)
-        
-        // Get the user's wallet address first
-        const accounts = await sdk.wallet.ethProvider.request({
-          method: 'eth_requestAccounts',
-        }) as string[]
-        
-        if (accounts.length === 0) {
-          throw new Error('No wallet connected')
-        }
-        
-        // Send the transaction
-        const txHash = await sdk.wallet.ethProvider.request({
-          method: 'eth_sendTransaction',
-          params: [{
-            from: accounts[0] as `0x${string}`,
-            to: TIP_ADDRESS as `0x${string}`,
-            value: '0x2386f26fc10000' as `0x${string}`, // 0.01 ETH in hex
-          }],
-        })
-        
-        if (txHash) {
-          setCopied(true)
-          setTimeout(() => setCopied(false), 3000)
-        }
-      } catch (error) {
-        console.error('Tip failed:', error)
-        // Fallback to copy address
-        copyAddress()
-      } finally {
-        setTipping(false)
-      }
-    } else {
-      copyAddress()
-    }
+  const handleTip = () => {
+    // Simple copy to clipboard
+    copyAddress()
   }
 
   const copyAddress = () => {
     navigator.clipboard.writeText(TIP_ADDRESS)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handlePopOut = async () => {
+    try {
+      if (isMiniApp) {
+        const URL = process.env.NEXT_PUBLIC_URL || 'https://daemoncast.vercel.app'
+        await sdk.actions.openUrl(URL)
+      } else {
+        // Fallback: open in new window
+        const URL = process.env.NEXT_PUBLIC_URL || 'https://daemoncast.vercel.app'
+        window.open(URL, '_blank')
+      }
+    } catch (error) {
+      console.error('Pop-out failed:', error)
+      const URL = process.env.NEXT_PUBLIC_URL || 'https://daemoncast.vercel.app'
+      window.open(URL, '_blank')
+    }
   }
 
   const shortAddress = TIP_ADDRESS.slice(0, 10) + '...' + TIP_ADDRESS.slice(-6)
@@ -239,21 +219,26 @@ export default function Home() {
           </div>
           <button
             onClick={handleTip}
-            disabled={tipping}
-            className="w-full bg-[#1a1a24] border border-purple-500/30 px-3 py-2 text-xs font-mono text-gray-300 hover:border-pink-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-[#1a1a24] border border-purple-500/30 px-3 py-2 text-xs font-mono text-gray-300 hover:border-pink-400 transition-colors"
           >
-            {tipping ? '✨ Sending...' : copied ? '✓ Success!' : isMiniApp ? '💝 Tip 0.01 ETH' : shortAddress}
+            {copied ? '✓ Copied!' : shortAddress}
           </button>
-          {!isMiniApp && (
-            <button
-              onClick={copyAddress}
-              className="w-full bg-[#1a1a24] border border-purple-500/30 px-3 py-1 text-xs text-gray-400 hover:border-purple-400 transition-colors mt-2"
-            >
-              Copy Address
-            </button>
-          )}
           <p className="text-xs text-gray-500 mt-2">support keeps me alive in the static ✨</p>
         </div>
+
+        {/* Pop-Out / Add to Home */}
+        {isMiniApp && (
+          <div className="bg-[#12121a] border border-purple-500/20 p-3">
+            <button
+              onClick={handlePopOut}
+              className="w-full bg-[#1a1a24] border border-purple-500/30 px-3 py-2 text-xs text-purple-300 hover:border-purple-400 transition-colors flex items-center justify-center gap-2"
+            >
+              <span>📌</span>
+              <span>Pop Out / Add to Home</span>
+            </button>
+            <p className="text-xs text-gray-500 mt-2 text-center">open in new window to save</p>
+          </div>
+        )}
 
         {/* Stats Grid - Compact */}
         <div className="grid grid-cols-3 gap-2">
