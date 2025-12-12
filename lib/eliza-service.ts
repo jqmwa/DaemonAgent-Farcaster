@@ -26,19 +26,17 @@ export class ElizaService {
     try {
       console.log('[ElizaOS] Initializing ElizaOS service...');
 
-      // Validate required environment variables (optional - only needed if using ElizaOS)
-      const requiredEnvVars = [
-        'FARCASTER_FID',
-        'FARCASTER_NEYNAR_API_KEY',
-        'FARCASTER_SIGNER_UUID'
-      ];
+      // Validate required environment variables
+      // Map actual env var names to ElizaOS expected names
+      const farcasterFid = process.env.FARCASTER_FID
+      const neynarApiKey = process.env.NEYNAR_API_KEY || process.env.FARCASTER_NEYNAR_API_KEY
+      const signerUuid = process.env.NEYNAR_SIGNER_UUID || process.env.FARCASTER_SIGNER_UUID
 
-      const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
-      if (missingVars.length > 0) {
+      if (!farcasterFid || !neynarApiKey || !signerUuid) {
         console.warn('[ElizaOS] ⚠️  Farcaster credentials not found in environment variables');
         console.warn('[ElizaOS] ⚠️  ElizaOS will not be available');
-        console.warn('[ElizaOS] ⚠️  To use ElizaOS, set FARCASTER_FID, FARCASTER_SIGNER_UUID, and FARCASTER_NEYNAR_API_KEY');
-        throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
+        console.warn('[ElizaOS] ⚠️  Required: FARCASTER_FID, NEYNAR_API_KEY (or FARCASTER_NEYNAR_API_KEY), NEYNAR_SIGNER_UUID (or FARCASTER_SIGNER_UUID)');
+        throw new Error('Missing required environment variables for ElizaOS');
       }
 
       // Prepare character configuration
@@ -58,9 +56,9 @@ export class ElizaService {
         settings: {
           ...elizaCharacter.settings,
           secrets: {
-            FARCASTER_FID: process.env.FARCASTER_FID,
-            FARCASTER_NEYNAR_API_KEY: process.env.FARCASTER_NEYNAR_API_KEY,
-            FARCASTER_SIGNER_UUID: process.env.FARCASTER_SIGNER_UUID,
+            FARCASTER_FID: farcasterFid,
+            FARCASTER_NEYNAR_API_KEY: neynarApiKey,
+            FARCASTER_SIGNER_UUID: signerUuid,
             FARCASTER_MODE: process.env.FARCASTER_MODE || 'webhook',
             FARCASTER_DRY_RUN: process.env.FARCASTER_DRY_RUN || 'false',
           }
