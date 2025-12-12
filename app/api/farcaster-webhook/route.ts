@@ -132,56 +132,6 @@ async function getThreadContext(castHash: string, apiKey: string): Promise<strin
   }
 }
 
-// Check if parent is from Azura (for thread continuity) and count Azura's replies in thread
-async function checkThreadForContinuation(parentHash: string, castHash: string, apiKey: string): Promise<{ shouldContinue: boolean, azuraReplyCount: number }> {
-  try {
-    // Get the parent cast
-    const parentRes = await fetch(
-      `https://api.neynar.com/v2/farcaster/cast?identifier=${parentHash}&type=hash`,
-      { 
-        headers: { "x-api-key": apiKey },
-        signal: AbortSignal.timeout(5000)
-      }
-    )
-    
-    if (!parentRes.ok) return { shouldContinue: false, azuraReplyCount: 0 }
-    
-    const parentData = await parentRes.json()
-    const parentUsername = parentData?.cast?.author?.username?.toLowerCase()
-    const isParentFromAzura = parentUsername === "daemonagent" || parentUsername === "azura" || parentUsername === "azuras.eth"
-    
-    if (!isParentFromAzura) {
-      return { shouldContinue: false, azuraReplyCount: 0 }
-    }
-    
-    // Count Azura's replies in the entire thread
-    const threadRes = await fetch(
-      `https://api.neynar.com/v2/farcaster/cast/conversation?identifier=${castHash}&type=hash&reply_depth=20&include_chronological_parent_casts=true`,
-      { 
-        headers: { "x-api-key": apiKey },
-        signal: AbortSignal.timeout(5000)
-      }
-    )
-    
-    if (!threadRes.ok) return { shouldContinue: true, azuraReplyCount: 0 }
-    
-    const threadData = await threadRes.json()
-    const allCasts = [
-      ...(threadData?.conversation?.cast?.chronological_parent_casts || []),
-      threadData?.conversation?.cast
-    ].filter(Boolean)
-    
-    // Count how many times Azura has replied in this thread
-    const azuraReplyCount = allCasts.filter((c: any) => {
-      const username = c?.author?.username?.toLowerCase()
-      return username === "daemonagent" || username === "azura" || username === "azuras.eth"
-    }).length
-    
-    return { shouldContinue: true, azuraReplyCount }
-  } catch {
-    return { shouldContinue: false, azuraReplyCount: 0 }
-  }
-}
 
 // Generate response using DeepSeek
 async function generateResponse(
@@ -558,21 +508,11 @@ export async function POST(request: Request) {
     const channel = cast.parent_url || cast.channel?.parent_url || ""
     
     // FAIL-SAFE: Don't respond to own casts
-    const authorUsername = author.username?.toLowerCase() || ""
-    if (authorUsername === "daemonagent" || authorUsername === "azura" || authorUsername === "azuras.eth" || authorUsername.includes("azura") || authorUsername.includes("daemon")) {
-      return NextResponse.json({ 
-        success: true, 
-        message: "BLOCKED: Own cast detected immediately",
-        author: author.username
-      })
-    }
-    
-    // ADDITIONAL FID-BASED CHECK
     const authorFid = author.fid
     const botFid = process.env.BOT_FID ? Number(process.env.BOT_FID) : null
     const authorUsername = author.username?.toLowerCase() || ""
     
-    // Don't respond to own casts
+    // Check by FID (most reliable) or exact username match
     if (botFid && authorFid === botFid) {
       return NextResponse.json({ success: true, message: "Own cast" })
     }
