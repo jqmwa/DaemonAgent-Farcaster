@@ -136,10 +136,29 @@ export default function Home() {
 
   const shortAddress = TIP_ADDRESS.slice(0, 10) + '...' + TIP_ADDRESS.slice(-6)
 
+  const URL = process.env.NEXT_PUBLIC_URL || 'https://daemoncast.vercel.app'
+
   return (
     <>
       <Head>
         <meta name="base:app_id" content="693c68f5e6be54f5ed71d80f" />
+        <meta 
+          name="fc:miniapp" 
+          content={JSON.stringify({
+            version: 'next',
+            imageUrl: `${URL}/ogimage.png`,
+            button: {
+              title: 'View Commands',
+              action: {
+                type: 'launch_miniapp',
+                name: 'Azura Commands',
+                url: URL,
+                splashImageUrl: `${URL}/azura-pfp.png`,
+                splashBackgroundColor: '#0a0a0f',
+              },
+            },
+          })} 
+        />
       </Head>
       
       <main className="min-h-screen bg-[#0a0a0f] text-white">
