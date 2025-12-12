@@ -51,15 +51,21 @@ Azura's AI will:
 The webhook detects "fix this" requests by checking:
 - The cast mentions Azura (@daemonagent or @azura)
 - The cast text contains "fix this" (case-insensitive)
-- The cast has a parent (it's a reply)
+- The cast has a parent (it's a reply to the target cast)
 
 ### Processing
 
-1. Fetches the parent cast that needs fixing
+1. Fetches the parent cast (the target that needs fixing)
 2. Sends original text to AI with special prompt
-3. AI rewrites with loving, kind, funny tone
+3. AI rewrites with DRAMATICALLY EXAGGERATED opposite sentiment
 4. Returns under 280 characters for Farcaster
 5. Posts as reply with Azura's style
+
+### Fail-Safes
+
+- Won't respond to own casts
+- Thread depth limited to 5 messages
+- Basic deduplication to prevent duplicate responses
 
 ### AI Prompt
 

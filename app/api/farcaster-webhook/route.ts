@@ -29,11 +29,7 @@ const DEDUP_WINDOW = 180000 // 3 minutes
 // Layer 3: Processing locks (prevent concurrent processing of same cast)
 const processingLocks = new Set<string>()
 
-// FAIL-SAFE: Emergency brake to prevent spam
-const responseCounter = new Map<string, number>()
-const MAX_RESPONSES_PER_MINUTE = 10
-const EMERGENCY_STOP = process.env.EMERGENCY_STOP === "true"
-
+// Simple deduplication
 function cleanupOldEntries() {
   const now = Date.now()
   for (const [hash, time] of processedCasts.entries()) {
@@ -49,83 +45,37 @@ function markAsProcessed(castHash: string, eventId?: string) {
   processingLocks.delete(castHash)
 }
 
+function wasRecentlyProcessed(castHash: string, eventId?: string): boolean {
+  cleanupOldEntries()
+  if (eventId && processedEvents.has(eventId)) return true
+  const lastProcessed = processedCasts.get(castHash)
+  return lastProcessed && Date.now() - lastProcessed < DEDUP_WINDOW
+}
+
 function isAlreadyProcessing(castHash: string): boolean {
-  if (processingLocks.has(castHash)) {
-    return true
-  }
+  if (processingLocks.has(castHash)) return true
   processingLocks.add(castHash)
   return false
 }
 
-function wasRecentlyProcessed(castHash: string, eventId?: string): boolean {
-  cleanupOldEntries()
-  
-  // Check event ID first
-  if (eventId && processedEvents.has(eventId)) {
-    return true
-  }
-  
-  // Check cast hash
-  const lastProcessed = processedCasts.get(castHash)
-  if (lastProcessed && Date.now() - lastProcessed < DEDUP_WINDOW) {
-    return true
-  }
-  
-  return false
-}
-
-function checkEmergencyStop(): boolean {
-  if (EMERGENCY_STOP) {
-    return true
-  }
-  
-  const now = Date.now()
-  const minuteAgo = now - 60000
-  
-  // Count responses in last minute
-  let recentResponses = 0
-  for (const [timestamp, count] of responseCounter.entries()) {
-    if (parseInt(timestamp) > minuteAgo) {
-      recentResponses += count
-    }
-  }
-  
-  return recentResponses >= MAX_RESPONSES_PER_MINUTE
-}
-
-function recordResponse() {
-  const now = Date.now()
-  const minute = Math.floor(now / 60000) * 60000
-  responseCounter.set(minute.toString(), (responseCounter.get(minute.toString()) || 0) + 1)
-}
-
-// Check user's Neynar score
-async function checkNeynarScore(fid: number, apiKey: string): Promise<{ allowed: boolean; score: number | null }> {
+// Check thread depth - limit to 5 messages
+async function getThreadDepth(castHash: string, apiKey: string): Promise<number> {
   try {
     const res = await fetch(
-      `https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`,
-      {
+      `https://api.neynar.com/v2/farcaster/cast/conversation?identifier=${castHash}&type=hash&reply_depth=10&include_chronological_parent_casts=true`,
+      { 
         headers: { "x-api-key": apiKey },
         signal: AbortSignal.timeout(5000)
       }
     )
     
-    if (!res.ok) {
-      console.error("[Neynar Score] Failed to fetch user data:", res.status)
-      return { allowed: true, score: null } // Allow on API error to avoid blocking legitimate users
-    }
+    if (!res.ok) return 0
     
     const data = await res.json()
-    const user = data?.users?.[0]
-    const score = user?.experimental?.neynar_user_score || 0
-    
-    console.log("[Neynar Score] User FID:", fid, "Score:", score)
-    
-    // Require score of 0.8 or above
-    return { allowed: score >= 0.8, score }
-  } catch (error) {
-    console.error("[Neynar Score] Error checking score:", error)
-    return { allowed: true, score: null } // Allow on error
+    const chronological = data?.conversation?.cast?.chronological_parent_casts || []
+    return chronological.length + 1 // +1 for current cast
+  } catch {
+    return 0
   }
 }
 
@@ -607,46 +557,7 @@ export async function POST(request: Request) {
     const castText = cast.text || ""
     const channel = cast.parent_url || cast.channel?.parent_url || ""
     
-    // DEBUG: Log full event structure to understand what we're receiving
-    console.log("[WEBHOOK] Full event structure:", JSON.stringify({
-      eventType: event.type,
-      eventKeys: Object.keys(event),
-      dataKeys: Object.keys(cast || {}),
-      cast: {
-        hash: cast.hash,
-        text: castText.substring(0, 100),
-        parent_hash: cast.parent_hash,
-        parent: cast.parent,
-        parent_author: cast.parent_author,
-        mentioned_profiles: cast.mentioned_profiles,
-        author: {
-          username: author?.username,
-          fid: author?.fid
-        }
-      }
-    }, null, 2))
-    
-    console.log("[WEBHOOK] Cast received:", {
-      author: author.username,
-      text: castText.substring(0, 100),
-      hash: castHash,
-      hasMentionedProfiles: !!cast.mentioned_profiles,
-      mentionedCount: cast.mentioned_profiles?.length || 0,
-      parent_hash: cast.parent_hash,
-      parent: cast.parent,
-      allCastKeys: Object.keys(cast)
-    })
-    
-    // EMERGENCY STOP CHECK
-    if (checkEmergencyStop()) {
-      return NextResponse.json({ 
-        success: true, 
-        message: "EMERGENCY STOP: Too many responses per minute",
-        emergencyStop: true
-      })
-    }
-
-    // IMMEDIATE SELF-CAST CHECK (prevent any processing of own casts)
+    // FAIL-SAFE: Don't respond to own casts
     const authorUsername = author.username?.toLowerCase() || ""
     if (authorUsername === "daemonagent" || authorUsername === "azura" || authorUsername === "azuras.eth" || authorUsername.includes("azura") || authorUsername.includes("daemon")) {
       return NextResponse.json({ 
@@ -659,18 +570,17 @@ export async function POST(request: Request) {
     // ADDITIONAL FID-BASED CHECK
     const authorFid = author.fid
     const botFid = process.env.BOT_FID ? Number(process.env.BOT_FID) : null
+    const authorUsername = author.username?.toLowerCase() || ""
     
+    // Don't respond to own casts
     if (botFid && authorFid === botFid) {
-      return NextResponse.json({ 
-        success: true, 
-        message: "BLOCKED: Own FID detected",
-        author: author.username,
-        fid: authorFid,
-        botFid: botFid
-      })
+      return NextResponse.json({ success: true, message: "Own cast" })
+    }
+    if (authorUsername === "daemonagent" || authorUsername === "azura" || authorUsername === "azuras.eth") {
+      return NextResponse.json({ success: true, message: "Own cast" })
     }
     
-    // Simple deduplication (moved score check to after interaction type determination)
+    // Deduplication
     if (wasRecentlyProcessed(castHash, eventId)) {
       return NextResponse.json({ success: true, message: "Already processed" })
     }
@@ -682,6 +592,13 @@ export async function POST(request: Request) {
     if (await hasAzuraReplied(castHash, apiKey)) {
       markAsProcessed(castHash, eventId)
       return NextResponse.json({ success: true, message: "Already replied" })
+    }
+    
+    // FAIL-SAFE: Limit thread depth to 5 messages
+    const threadDepth = await getThreadDepth(castHash, apiKey)
+    if (threadDepth >= 5) {
+      markAsProcessed(castHash, eventId)
+      return NextResponse.json({ success: true, message: "Thread limit reached", depth: threadDepth })
     }
     
     // CHECK IF SHOULD RESPOND
@@ -700,88 +617,16 @@ export async function POST(request: Request) {
     
     const isDaemonRequest = castText.toLowerCase().includes("show me my daemon")
     const isFixThisRequest = castText.toLowerCase().includes("fix this")
-    
-    // Check multiple possible parent fields (Neynar webhook structure may vary)
-    // For replies, parent_hash should be present. Also check parent object structure.
-    let parentHash = cast.parent_hash || 
-                     cast.parent?.hash || 
-                     (typeof cast.parent === 'string' ? cast.parent : null) ||
-                     cast.parent_author?.hash ||
-                     null
-    
-    // If we have a cast hash but no parent_hash, try to fetch the cast to see if it's a reply
-    // This handles cases where the webhook doesn't include parent info
-    if (!parentHash && castHash) {
-      try {
-        const castRes = await fetch(
-          `https://api.neynar.com/v2/farcaster/cast?identifier=${castHash}&type=hash`,
-          {
-            headers: { "x-api-key": apiKey },
-            signal: AbortSignal.timeout(3000)
-          }
-        )
-        if (castRes.ok) {
-          const castData = await castRes.json()
-          parentHash = castData?.cast?.parent_hash || null
-          if (parentHash) {
-            console.log("[WEBHOOK] Found parent_hash via API fetch:", parentHash)
-          }
-        }
-      } catch (error) {
-        // Non-critical, continue without parent
-        console.log("[WEBHOOK] Could not fetch cast to check parent:", error)
-      }
-    }
-    
+    const parentHash = cast.parent_hash || cast.parent?.hash || (typeof cast.parent === 'string' ? cast.parent : null)
     const hasParent = parentHash && typeof parentHash === 'string' && parentHash.length > 0
-    
-    console.log("[WEBHOOK] Mention check:", {
-      textMention,
-      structuredMention,
-      isMention,
-      isDaemonRequest,
-      isFixThisRequest,
-      hasParent,
-      parentHash,
-      parentHashType: typeof parentHash,
-      castParentHash: cast.parent_hash,
-      castParent: cast.parent,
-      castParentType: typeof cast.parent,
-      castParentKeys: cast.parent ? Object.keys(cast.parent) : null,
-      mentionedProfiles: cast.mentioned_profiles?.map((p: any) => {
-        return {
-          username: p.username,
-          fid: p.fid,
-          allKeys: Object.keys(p)
-        }
-      }),
-      fullMentionedProfiles: JSON.stringify(cast.mentioned_profiles, null, 2)
-    })
     
     let shouldRespond = false
     let reason = ""
     
+    // Determine response type
     if (isMention && isFixThisRequest && hasParent) {
       shouldRespond = true
       reason = "fix_this"
-      console.log("[WEBHOOK] ✅ Fix this request detected:", {
-        commander: author.username,
-        commanderFid: authorFid,
-        parentHash,
-        commanderCastText: castText,
-        commanderCastHash: castHash
-      })
-    } else if (isMention && isFixThisRequest && !hasParent) {
-      console.log("[WEBHOOK] ⚠️ Fix this request detected but no parent found - Commander must REPLY to the cast they want fixed:", {
-        commander: author.username,
-        castText,
-        parentHash,
-        parentHashType: typeof parentHash,
-        castKeys: Object.keys(cast),
-        castParent: cast.parent,
-        castParentHash: cast.parent_hash
-      })
-      // Don't respond if no parent - "fix this" requires a reply to the target cast
     } else if (isMention && isDaemonRequest) {
       shouldRespond = true
       reason = "daemon_analysis"
@@ -790,169 +635,59 @@ export async function POST(request: Request) {
       reason = "mention"
     }
     
-    // CHECK NEYNAR SCORE (must be 0.8 or above)
-    if (shouldRespond) {
-      const scoreCheck = await checkNeynarScore(authorFid, apiKey)
-      if (!scoreCheck.allowed) {
-        console.log("[WEBHOOK] User blocked due to low Neynar score:", {
-          username: author.username,
-          fid: authorFid,
-          score: scoreCheck.score,
-          reason: "new_interaction"
-        })
-        
-        markAsProcessed(castHash, eventId)
-        return NextResponse.json({ 
-          success: true, 
-          message: "User Neynar score below threshold for new interactions",
-          author: author.username,
-          fid: authorFid,
-          score: scoreCheck.score,
-          required: 0.8
-        })
-      }
-      
-      console.log("[WEBHOOK] User passed Neynar score check:", {
-        username: author.username,
-        fid: authorFid,
-        score: scoreCheck.score,
-        interactionType: reason
-      })
-    }
-    
     if (!shouldRespond) {
       markAsProcessed(castHash, eventId)
-      return NextResponse.json({ 
-        success: true, 
-        message: "No response needed",
-        reason: "no_mention_or_thread",
-        isMention,
-        hasParent
-      })
+      return NextResponse.json({ success: true, message: "No mention" })
     }
     
-    console.log("[WEBHOOK] 🚀 Processing response:", {
-      reason,
-      author: author.username,
-      authorFid: authorFid,
-      castHash
-    })
-    
-    // LIKE THE CAST (do this early so it happens even if response generation fails)
-    console.log("[WEBHOOK] Liking cast from:", author.username)
+    // Like the cast
     await likeCast(castHash, apiKey, signerUuid)
     
-    // GENERATE RESPONSE - Always base response on TARGET (parent cast), not the mention
+    // Generate response based on TARGET (parent cast), not the mention
     let response: string
     try {
       if (reason === "fix_this") {
-        const fixParentHash = cast.parent_hash || cast.parent?.hash || cast.parent
-        console.log("[WEBHOOK] Generating fix this response for parent:", fixParentHash)
-        response = await generateFixThisResponse(fixParentHash, apiKey)
-        console.log("[WEBHOOK] Generated fix this response:", response.substring(0, 100))
+        response = await generateFixThisResponse(parentHash, apiKey)
       } else if (reason === "daemon_analysis") {
-        console.log("[WEBHOOK] Generating daemon analysis for:", author.username)
         response = await generateDaemonResponse(author.fid, author.username)
-        console.log("[WEBHOOK] Generated daemon response:", response.substring(0, 100))
       } else {
         // For regular mentions: respond based on TARGET (parent cast), not the mention
         let targetText = castText
         let targetAuthor = author.username
         
         if (hasParent && parentHash) {
-          // Fetch the parent cast (the target)
-          try {
-            const parentRes = await fetch(
-              `https://api.neynar.com/v2/farcaster/cast?identifier=${parentHash}&type=hash`,
-              {
-                headers: { "x-api-key": apiKey },
-                signal: AbortSignal.timeout(5000)
-              }
-            )
-            if (parentRes.ok) {
-              const parentData = await parentRes.json()
-              targetText = parentData?.cast?.text || castText
-              targetAuthor = parentData?.cast?.author?.username || author.username
-              console.log("[WEBHOOK] Using parent cast as target:", {
-                targetText: targetText.substring(0, 100),
-                targetAuthor
-              })
-            }
-          } catch (error) {
-            console.log("[WEBHOOK] Could not fetch parent, using mention cast:", error)
+          const parentRes = await fetch(
+            `https://api.neynar.com/v2/farcaster/cast?identifier=${parentHash}&type=hash`,
+            { headers: { "x-api-key": apiKey }, signal: AbortSignal.timeout(5000) }
+          )
+          if (parentRes.ok) {
+            const parentData = await parentRes.json()
+            targetText = parentData?.cast?.text || castText
+            targetAuthor = parentData?.cast?.author?.username || author.username
           }
         }
         
         const threadContext = hasParent ? await getThreadContext(castHash, apiKey) : ""
-        console.log("[WEBHOOK] Generating response based on target:", targetAuthor)
         response = await generateResponse(targetText, targetAuthor, threadContext)
-        console.log("[WEBHOOK] Generated response:", response.substring(0, 100))
       }
     } catch (error) {
-      console.error("[WEBHOOK] Error generating response:", error)
+      console.error("[WEBHOOK] Error:", error)
       markAsProcessed(castHash, eventId)
-      return NextResponse.json({ 
-        success: false, 
-        message: "Failed to generate response",
-        error: error instanceof Error ? error.message : "Unknown error"
-      }, { status: 500 })
+      return NextResponse.json({ success: false, error: "Failed to generate response" }, { status: 500 })
     }
     
-    if (!response || response.trim().length === 0) {
-      console.error("[WEBHOOK] Empty response generated")
+    if (!response?.trim()) {
       markAsProcessed(castHash, eventId)
-      return NextResponse.json({ 
-        success: false, 
-        message: "Empty response generated"
-      }, { status: 500 })
+      return NextResponse.json({ success: false, error: "Empty response" }, { status: 500 })
     }
     
-    // FINAL CHECK BEFORE POSTING
-    if (await hasAzuraReplied(castHash, apiKey)) {
-      markAsProcessed(castHash, eventId)
-      return NextResponse.json({ success: true, message: "Race condition: already replied" })
-    }
-    
-    // POST REPLY
-    console.log("[WEBHOOK] Posting reply to cast:", castHash)
-    let result
-    try {
-      result = await postReply(response, castHash, apiKey, signerUuid)
-      console.log("[WEBHOOK] ✅ Reply posted successfully:", result.cast?.hash)
-    } catch (error) {
-      console.error("[WEBHOOK] ❌ Error posting reply:", error)
-      markAsProcessed(castHash, eventId)
-      return NextResponse.json({ 
-        success: false, 
-        message: "Failed to post reply",
-        error: error instanceof Error ? error.message : "Unknown error"
-      }, { status: 500 })
-    }
-    
-    // MARK AS PROCESSED
+    // Post reply
+    const result = await postReply(response, castHash, apiKey, signerUuid)
     markAsProcessed(castHash, eventId)
-    recordResponse()
     
-    return NextResponse.json({
-      success: true,
-      message: "Replied successfully",
-      response,
-      castHash: result.cast?.hash,
-      reason,
-      author: author.username,
-      channel
-    })
-    
+    return NextResponse.json({ success: true, castHash: result.cast?.hash })
   } catch (error) {
-    // Clean up processing lock on error
     processingLocks.clear()
-    
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : "Unknown error"
-      },
-      { status: 500 }
-    )
+    return NextResponse.json({ success: false, error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 })
   }
 }
