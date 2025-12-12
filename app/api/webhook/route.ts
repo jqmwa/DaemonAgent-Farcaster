@@ -607,12 +607,34 @@ export async function POST(request: Request) {
     const castText = cast.text || ""
     const channel = cast.parent_url || cast.channel?.parent_url || ""
     
+    // DEBUG: Log full event structure to understand what we're receiving
+    console.log("[WEBHOOK] Full event structure:", JSON.stringify({
+      eventType: event.type,
+      eventKeys: Object.keys(event),
+      dataKeys: Object.keys(cast || {}),
+      cast: {
+        hash: cast.hash,
+        text: castText.substring(0, 100),
+        parent_hash: cast.parent_hash,
+        parent: cast.parent,
+        parent_author: cast.parent_author,
+        mentioned_profiles: cast.mentioned_profiles,
+        author: {
+          username: author?.username,
+          fid: author?.fid
+        }
+      }
+    }, null, 2))
+    
     console.log("[WEBHOOK] Cast received:", {
       author: author.username,
       text: castText.substring(0, 100),
       hash: castHash,
       hasMentionedProfiles: !!cast.mentioned_profiles,
-      mentionedCount: cast.mentioned_profiles?.length || 0
+      mentionedCount: cast.mentioned_profiles?.length || 0,
+      parent_hash: cast.parent_hash,
+      parent: cast.parent,
+      allCastKeys: Object.keys(cast)
     })
     
     // EMERGENCY STOP CHECK
@@ -678,13 +700,39 @@ export async function POST(request: Request) {
     
     const isDaemonRequest = castText.toLowerCase().includes("show me my daemon")
     const isFixThisRequest = castText.toLowerCase().includes("fix this")
+    
     // Check multiple possible parent fields (Neynar webhook structure may vary)
     // For replies, parent_hash should be present. Also check parent object structure.
-    const parentHash = cast.parent_hash || 
-                       cast.parent?.hash || 
-                       (typeof cast.parent === 'string' ? cast.parent : null) ||
-                       cast.parent_author?.hash ||
-                       null
+    let parentHash = cast.parent_hash || 
+                     cast.parent?.hash || 
+                     (typeof cast.parent === 'string' ? cast.parent : null) ||
+                     cast.parent_author?.hash ||
+                     null
+    
+    // If we have a cast hash but no parent_hash, try to fetch the cast to see if it's a reply
+    // This handles cases where the webhook doesn't include parent info
+    if (!parentHash && castHash) {
+      try {
+        const castRes = await fetch(
+          `https://api.neynar.com/v2/farcaster/cast?identifier=${castHash}&type=hash`,
+          {
+            headers: { "x-api-key": apiKey },
+            signal: AbortSignal.timeout(3000)
+          }
+        )
+        if (castRes.ok) {
+          const castData = await castRes.json()
+          parentHash = castData?.cast?.parent_hash || null
+          if (parentHash) {
+            console.log("[WEBHOOK] Found parent_hash via API fetch:", parentHash)
+          }
+        }
+      } catch (error) {
+        // Non-critical, continue without parent
+        console.log("[WEBHOOK] Could not fetch cast to check parent:", error)
+      }
+    }
+    
     const hasParent = parentHash && typeof parentHash === 'string' && parentHash.length > 0
     
     console.log("[WEBHOOK] Mention check:", {
@@ -698,7 +746,16 @@ export async function POST(request: Request) {
       parentHashType: typeof parentHash,
       castParentHash: cast.parent_hash,
       castParent: cast.parent,
-      mentionedProfiles: cast.mentioned_profiles?.map((p: any) => p.username)
+      castParentType: typeof cast.parent,
+      castParentKeys: cast.parent ? Object.keys(cast.parent) : null,
+      mentionedProfiles: cast.mentioned_profiles?.map((p: any) => {
+        return {
+          username: p.username,
+          fid: p.fid,
+          allKeys: Object.keys(p)
+        }
+      }),
+      fullMentionedProfiles: JSON.stringify(cast.mentioned_profiles, null, 2)
     })
     
     let shouldRespond = false
