@@ -803,19 +803,55 @@ export async function POST(request: Request) {
       })
     }
     
+    console.log("[WEBHOOK] 🚀 Processing response:", {
+      reason,
+      author: author.username,
+      authorFid: authorFid,
+      castHash,
+      isThreadContinuation
+    })
+    
+    // LIKE THE CAST (do this early so it happens even if response generation fails)
+    console.log("[WEBHOOK] Liking cast from:", author.username)
+    await likeCast(castHash, apiKey, signerUuid)
+    
     // GET CONTEXT
     const threadContext = hasParent ? await getThreadContext(castHash, apiKey) : ""
     
     // GENERATE RESPONSE
     let response: string
-    if (reason === "fix_this") {
-      const fixParentHash = cast.parent_hash || cast.parent?.hash || cast.parent
-      console.log("[WEBHOOK] Generating fix this response for parent:", fixParentHash)
-      response = await generateFixThisResponse(fixParentHash, apiKey)
-    } else if (reason === "daemon_analysis") {
-      response = await generateDaemonResponse(author.fid, author.username)
-    } else {
-      response = await generateResponse(castText, author.username, threadContext)
+    try {
+      if (reason === "fix_this") {
+        const fixParentHash = cast.parent_hash || cast.parent?.hash || cast.parent
+        console.log("[WEBHOOK] Generating fix this response for parent:", fixParentHash)
+        response = await generateFixThisResponse(fixParentHash, apiKey)
+        console.log("[WEBHOOK] Generated fix this response:", response.substring(0, 100))
+      } else if (reason === "daemon_analysis") {
+        console.log("[WEBHOOK] Generating daemon analysis for:", author.username)
+        response = await generateDaemonResponse(author.fid, author.username)
+        console.log("[WEBHOOK] Generated daemon response:", response.substring(0, 100))
+      } else {
+        console.log("[WEBHOOK] Generating regular response for:", author.username)
+        response = await generateResponse(castText, author.username, threadContext)
+        console.log("[WEBHOOK] Generated response:", response.substring(0, 100))
+      }
+    } catch (error) {
+      console.error("[WEBHOOK] Error generating response:", error)
+      markAsProcessed(castHash, eventId)
+      return NextResponse.json({ 
+        success: false, 
+        message: "Failed to generate response",
+        error: error instanceof Error ? error.message : "Unknown error"
+      }, { status: 500 })
+    }
+    
+    if (!response || response.trim().length === 0) {
+      console.error("[WEBHOOK] Empty response generated")
+      markAsProcessed(castHash, eventId)
+      return NextResponse.json({ 
+        success: false, 
+        message: "Empty response generated"
+      }, { status: 500 })
     }
     
     // FINAL CHECK BEFORE POSTING
@@ -824,11 +860,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, message: "Race condition: already replied" })
     }
     
-    // LIKE THE CAST
-    await likeCast(castHash, apiKey, signerUuid)
-    
     // POST REPLY
-    const result = await postReply(response, castHash, apiKey, signerUuid)
+    console.log("[WEBHOOK] Posting reply to cast:", castHash)
+    let result
+    try {
+      result = await postReply(response, castHash, apiKey, signerUuid)
+      console.log("[WEBHOOK] ✅ Reply posted successfully:", result.cast?.hash)
+    } catch (error) {
+      console.error("[WEBHOOK] ❌ Error posting reply:", error)
+      markAsProcessed(castHash, eventId)
+      return NextResponse.json({ 
+        success: false, 
+        message: "Failed to post reply",
+        error: error instanceof Error ? error.message : "Unknown error"
+      }, { status: 500 })
+    }
     
     // MARK AS PROCESSED
     markAsProcessed(castHash, eventId)
