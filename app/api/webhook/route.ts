@@ -759,9 +759,7 @@ export async function POST(request: Request) {
     })
     
     let shouldRespond = false
-    let azuraReplyCount = 0
     let reason = ""
-    let isThreadContinuation = false
     
     if (isMention && isFixThisRequest && hasParent) {
       shouldRespond = true
@@ -790,32 +788,10 @@ export async function POST(request: Request) {
     } else if (isMention) {
       shouldRespond = true
       reason = "mention"
-    } else if (hasParent) {
-      // Check thread continuation and count Azura's replies
-      const threadParentHash = cast.parent_hash || cast.parent?.hash || cast.parent
-      const threadCheck = await checkThreadForContinuation(threadParentHash, castHash, apiKey)
-      azuraReplyCount = threadCheck.azuraReplyCount
-      
-      if (threadCheck.shouldContinue) {
-        // MAX 3 REPLIES PER THREAD (user>azura>user>azura>user>azura)
-        if (azuraReplyCount >= 3) {
-          markAsProcessed(castHash, eventId)
-          return NextResponse.json({ 
-            success: true, 
-            message: "Max replies reached (3 reply limit)",
-            reason: "max_replies",
-            count: azuraReplyCount
-          })
-        }
-        shouldRespond = true
-        reason = "thread_continuation"
-        isThreadContinuation = true
-      }
     }
     
     // CHECK NEYNAR SCORE (must be 0.8 or above)
-    // Only for NEW interactions (mentions/commands), NOT for thread continuations
-    if (!isThreadContinuation) {
+    if (shouldRespond) {
       const scoreCheck = await checkNeynarScore(authorFid, apiKey)
       if (!scoreCheck.allowed) {
         console.log("[WEBHOOK] User blocked due to low Neynar score:", {
@@ -842,11 +818,6 @@ export async function POST(request: Request) {
         score: scoreCheck.score,
         interactionType: reason
       })
-    } else {
-      console.log("[WEBHOOK] Thread continuation - bypassing score check:", {
-        username: author.username,
-        fid: authorFid
-      })
     }
     
     if (!shouldRespond) {
@@ -864,18 +835,14 @@ export async function POST(request: Request) {
       reason,
       author: author.username,
       authorFid: authorFid,
-      castHash,
-      isThreadContinuation
+      castHash
     })
     
     // LIKE THE CAST (do this early so it happens even if response generation fails)
     console.log("[WEBHOOK] Liking cast from:", author.username)
     await likeCast(castHash, apiKey, signerUuid)
     
-    // GET CONTEXT
-    const threadContext = hasParent ? await getThreadContext(castHash, apiKey) : ""
-    
-    // GENERATE RESPONSE
+    // GENERATE RESPONSE - Always base response on TARGET (parent cast), not the mention
     let response: string
     try {
       if (reason === "fix_this") {
@@ -888,8 +855,37 @@ export async function POST(request: Request) {
         response = await generateDaemonResponse(author.fid, author.username)
         console.log("[WEBHOOK] Generated daemon response:", response.substring(0, 100))
       } else {
-        console.log("[WEBHOOK] Generating regular response for:", author.username)
-        response = await generateResponse(castText, author.username, threadContext)
+        // For regular mentions: respond based on TARGET (parent cast), not the mention
+        let targetText = castText
+        let targetAuthor = author.username
+        
+        if (hasParent && parentHash) {
+          // Fetch the parent cast (the target)
+          try {
+            const parentRes = await fetch(
+              `https://api.neynar.com/v2/farcaster/cast?identifier=${parentHash}&type=hash`,
+              {
+                headers: { "x-api-key": apiKey },
+                signal: AbortSignal.timeout(5000)
+              }
+            )
+            if (parentRes.ok) {
+              const parentData = await parentRes.json()
+              targetText = parentData?.cast?.text || castText
+              targetAuthor = parentData?.cast?.author?.username || author.username
+              console.log("[WEBHOOK] Using parent cast as target:", {
+                targetText: targetText.substring(0, 100),
+                targetAuthor
+              })
+            }
+          } catch (error) {
+            console.log("[WEBHOOK] Could not fetch parent, using mention cast:", error)
+          }
+        }
+        
+        const threadContext = hasParent ? await getThreadContext(castHash, apiKey) : ""
+        console.log("[WEBHOOK] Generating response based on target:", targetAuthor)
+        response = await generateResponse(targetText, targetAuthor, threadContext)
         console.log("[WEBHOOK] Generated response:", response.substring(0, 100))
       }
     } catch (error) {
