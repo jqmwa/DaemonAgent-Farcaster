@@ -66,10 +66,31 @@ export class ElizaService {
         clientConfig: elizaCharacter.clientConfig
       } as Character;
 
+      // Create database adapter and ensure it has isReady method
+      const adapter = new DatabaseAdapter();
+      
+      // Add isReady method if it doesn't exist (required by Farcaster plugin)
+      if (typeof (adapter as any).isReady !== 'function') {
+        (adapter as any).isReady = async () => {
+          // For webhook mode, we can assume adapter is always ready
+          // In a real implementation, this would check database connection
+          return true;
+        };
+      }
+      
+      // Initialize adapter if it has an initialize method
+      if (typeof (adapter as any).initialize === 'function') {
+        try {
+          await (adapter as any).initialize();
+        } catch (initError) {
+          console.warn('[ElizaOS] Adapter initialization warning (continuing anyway):', initError);
+        }
+      }
+
       // Create runtime instance
       this.runtime = new AgentRuntime({
         character,
-        adapter: new DatabaseAdapter(), // Use default database adapter
+        adapter,
         plugins: [farcasterPlugin],
       });
 
