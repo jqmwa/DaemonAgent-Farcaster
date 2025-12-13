@@ -17,13 +17,35 @@ import elizaCharacter from './eliza-character.json';
 class MinimalAdapter extends DatabaseAdapter {
   private agentId: string | null = null;
   private agentData: any = null;
+  private entities: Map<string, any> = new Map(); // Store entities by ID
+  public db: any = null; // Required by DatabaseAdapter
 
   constructor() {
     super();
   }
 
+  async initialize(config?: any): Promise<void> {
+    // No-op for minimal adapter
+  }
+
+  async init(): Promise<void> {
+    // No-op for minimal adapter
+  }
+
+  async runPluginMigrations(plugins: Array<{ name: string; schema?: any }>, options?: any): Promise<void> {
+    // No-op for webhook mode
+  }
+
   async isReady(): Promise<boolean> {
     return true;
+  }
+
+  async close(): Promise<void> {
+    // No-op
+  }
+
+  async getConnection(): Promise<any> {
+    return null;
   }
 
   async getAgent(agentId: string): Promise<any> {
@@ -38,36 +60,183 @@ class MinimalAdapter extends DatabaseAdapter {
     };
   }
 
-  async createAgent(agent: any): Promise<any> {
-    this.agentId = agent.id;
-    this.agentData = agent;
-    return agent;
+  async getAgents(): Promise<any[]> {
+    return this.agentData ? [this.agentData] : [];
   }
 
-  async updateAgent(agentId: string, agent: any): Promise<any> {
+  async createAgent(agent: any): Promise<boolean> {
+    this.agentId = agent.id;
+    this.agentData = agent;
+    
+    // Also create an entity for the agent if it has an ID
+    // This helps ElizaOS find the agent entity during initialization
+    if (agent.id) {
+      const agentEntity = {
+        id: agent.id,
+        name: agent.name || elizaCharacter.name,
+        username: agent.username || elizaCharacter.username,
+        ...agent
+      };
+      this.entities.set(agent.id, agentEntity);
+      console.log('[MinimalAdapter] Created agent entity:', agent.id);
+    }
+    
+    return true;
+  }
+
+  async updateAgent(agentId: string, agent: any): Promise<boolean> {
     if (this.agentId === agentId) {
       this.agentData = { ...this.agentData, ...agent };
     }
-    return this.agentData || agent;
+    return true;
   }
 
-  // Stub methods for plugin migrations (not needed for webhook mode)
-  async runMigrations(migrations: any[]): Promise<void> {
-    // No-op for webhook mode
-    return;
+  async deleteAgent(agentId: string): Promise<boolean> {
+    if (this.agentId === agentId) {
+      this.agentId = null;
+      this.agentData = null;
+    }
+    return true;
   }
 
-  // Add other required methods as stubs
-  async getMemory(params: any): Promise<any[]> {
+  async ensureEmbeddingDimension(dimension: number): Promise<void> {
+    // No-op
+  }
+
+  // Cache methods
+  async getCache<T>(key: string): Promise<T | undefined> {
+    return undefined;
+  }
+
+  async setCache<T>(key: string, value: T): Promise<boolean> {
+    return true;
+  }
+
+  async deleteCache(key: string): Promise<boolean> {
+    return true;
+  }
+
+  // Entity methods
+  async getEntitiesByIds(entityIds: string[]): Promise<any[] | null> {
+    if (entityIds.length === 0) {
+      return [];
+    }
+    
+    // Return entities that were created and stored
+    const foundEntities = entityIds
+      .map(id => {
+        const entity = this.entities.get(id);
+        if (entity) {
+          console.log('[MinimalAdapter] Found entity:', id);
+        } else {
+          console.log('[MinimalAdapter] Entity not found:', id, 'Available entities:', Array.from(this.entities.keys()));
+        }
+        return entity;
+      })
+      .filter(entity => entity !== undefined);
+    
+    // Return found entities array, or null if none found (as per interface)
+    // Note: ElizaOS runtime.getEntityById expects getEntitiesByIds to return an array
+    // and takes the first element, so we need to return an array with the entity
+    if (foundEntities.length === 0) {
+      console.log('[MinimalAdapter] No entities found for IDs:', entityIds);
+      return null;
+    }
+    
+    return foundEntities;
+  }
+
+  async getEntitiesForRoom(roomId: string, includeComponents?: boolean): Promise<any[]> {
+    // Return entities associated with the room (if we had room tracking)
+    // For minimal adapter, return empty array
     return [];
   }
 
-  async createMemory(memory: any): Promise<any> {
-    return memory;
+  async createEntities(entities: any[]): Promise<boolean> {
+    // Store entities in memory by their ID
+    for (const entity of entities) {
+      if (entity.id) {
+        this.entities.set(entity.id, entity);
+        console.log('[MinimalAdapter] Stored entity:', entity.id, 'Type:', entity.type || 'unknown', 'Name:', entity.name || 'unnamed');
+      } else {
+        console.warn('[MinimalAdapter] Entity without ID provided:', entity);
+      }
+    }
+    console.log('[MinimalAdapter] Total entities stored:', this.entities.size);
+    return true;
   }
 
-  async removeMemory(memoryId: string): Promise<void> {
+  async updateEntity(entity: any): Promise<void> {
+    // Update stored entity if it exists
+    if (entity.id && this.entities.has(entity.id)) {
+      this.entities.set(entity.id, { ...this.entities.get(entity.id), ...entity });
+    }
+  }
+
+  // Component methods
+  async getComponent(entityId: string, type: string, worldId?: string, sourceEntityId?: string): Promise<any> {
+    return null;
+  }
+
+  async getComponents(entityId: string, worldId?: string, sourceEntityId?: string): Promise<any[]> {
+    return [];
+  }
+
+  async createComponent(component: any): Promise<boolean> {
+    return true;
+  }
+
+  async updateComponent(component: any): Promise<void> {
     // No-op
+  }
+
+  async deleteComponent(componentId: string): Promise<void> {
+    // No-op
+  }
+
+  // Memory methods
+  async getMemories(params: any): Promise<any[]> {
+    return [];
+  }
+
+  async getMemoryById(id: string): Promise<any> {
+    return null;
+  }
+
+  async getMemoriesByIds(ids: string[], tableName?: string): Promise<any[]> {
+    return [];
+  }
+
+  async getMemoriesByRoomIds(params: { roomIds: string[]; tableName: string; limit?: number }): Promise<any[]> {
+    return [];
+  }
+
+  async createMemory(memory: any, tableName: string, unique?: boolean): Promise<string> {
+    return memory.id || 'stub-id';
+  }
+
+  async updateMemory(memory: any): Promise<boolean> {
+    return true;
+  }
+
+  async deleteMemory(memoryId: string): Promise<void> {
+    // No-op
+  }
+
+  async deleteManyMemories(memoryIds: string[]): Promise<void> {
+    // No-op
+  }
+
+  async deleteAllMemories(roomId: string, tableName: string): Promise<void> {
+    // No-op
+  }
+
+  async countMemories(roomId: string, unique?: boolean, tableName?: string): Promise<number> {
+    return 0;
+  }
+
+  async searchMemories(params: any): Promise<any[]> {
+    return [];
   }
 
   async getCachedEmbeddings(params: any): Promise<any[]> {
@@ -77,11 +246,174 @@ class MinimalAdapter extends DatabaseAdapter {
   async createCachedEmbedding(embedding: any): Promise<any> {
     return embedding;
   }
+
+  // Log methods
+  async log(params: any): Promise<void> {
+    // No-op
+  }
+
+  async getLogs(params: any): Promise<any[]> {
+    return [];
+  }
+
+  async deleteLog(logId: string): Promise<void> {
+    // No-op
+  }
+
+  // World methods
+  async createWorld(world: any): Promise<string> {
+    return world.id || 'stub-world-id';
+  }
+
+  async getWorld(id: string): Promise<any> {
+    return null;
+  }
+
+  async removeWorld(id: string): Promise<void> {
+    // No-op
+  }
+
+  async getAllWorlds(): Promise<any[]> {
+    return [];
+  }
+
+  async updateWorld(world: any): Promise<void> {
+    // No-op
+  }
+
+  // Room methods
+  async getRoomsByIds(roomIds: string[]): Promise<any[] | null> {
+    return [];
+  }
+
+  async createRooms(rooms: any[]): Promise<string[]> {
+    return rooms.map(r => r.id || 'stub-room-id');
+  }
+
+  async deleteRoom(roomId: string): Promise<void> {
+    // No-op
+  }
+
+  async deleteRoomsByWorldId(worldId: string): Promise<void> {
+    // No-op
+  }
+
+  async updateRoom(room: any): Promise<void> {
+    // No-op
+  }
+
+  async getRoomsForParticipant(entityId: string): Promise<string[]> {
+    return [];
+  }
+
+  async getRoomsForParticipants(userIds: string[]): Promise<string[]> {
+    return [];
+  }
+
+  async getRoomsByWorld(worldId: string): Promise<any[]> {
+    return [];
+  }
+
+  // Participant methods
+  async addParticipantsRoom(entityIds: string[], roomId: string): Promise<boolean> {
+    // For minimal adapter, just return true - we don't need to track participants
+    return true;
+  }
+
+  async removeParticipant(entityId: string, roomId: string): Promise<boolean> {
+    return true;
+  }
+
+  async getParticipantsForEntity(entityId: string): Promise<any[]> {
+    return [];
+  }
+
+  async getParticipantsForRoom(roomId: string): Promise<string[]> {
+    return [];
+  }
+
+  async isRoomParticipant(roomId: string, entityId: string): Promise<boolean> {
+    return false;
+  }
+
+  async getParticipantUserState(roomId: string, entityId: string): Promise<'FOLLOWED' | 'MUTED' | null> {
+    return null;
+  }
+
+  async setParticipantUserState(roomId: string, entityId: string, state: 'FOLLOWED' | 'MUTED' | null): Promise<void> {
+    // No-op
+  }
+
+  // Relationship methods
+  async getRelationships(params: any): Promise<any[]> {
+    return [];
+  }
+
+  async getRelationship(params: any): Promise<any> {
+    return null;
+  }
+
+  async createRelationship(params: {
+    sourceEntityId: string;
+    targetEntityId: string;
+    tags?: string[];
+    metadata?: Record<string, unknown>;
+  }): Promise<boolean> {
+    return true;
+  }
+
+  async updateRelationship(params: {
+    sourceEntityId: string;
+    targetEntityId: string;
+    tags?: string[];
+    metadata?: Record<string, unknown>;
+  }): Promise<void> {
+    // No-op
+  }
+
+  async deleteRelationship(relationshipId: string): Promise<void> {
+    // No-op
+  }
+
+  // Task methods
+  async getTasks(params: any): Promise<any[]> {
+    return [];
+  }
+
+  async getTask(taskId: string): Promise<any> {
+    return null;
+  }
+
+  async getTasksByName(name: string): Promise<any[]> {
+    return [];
+  }
+
+  async createTask(task: any): Promise<string> {
+    return task.id || 'stub-task-id';
+  }
+
+  async updateTask(task: any): Promise<void> {
+    // No-op
+  }
+
+  async deleteTask(taskId: string): Promise<void> {
+    // No-op
+  }
+
+  // Optional methods
+  async getAgentRunSummaries?(params: any): Promise<any> {
+    return { runs: [], total: 0, hasMore: false };
+  }
+
+  async withEntityContext?<T>(entityId: string | null, callback: () => Promise<T>): Promise<T> {
+    return callback();
+  }
 }
 
 export class ElizaService {
   private runtime: AgentRuntime | null = null;
   private initialized: boolean = false;
+  private initializing: boolean = false; // Prevent concurrent initialization
 
   /**
    * Initialize the ElizaOS runtime with Farcaster plugin
@@ -92,19 +424,52 @@ export class ElizaService {
       return;
     }
 
+    // Prevent concurrent initialization attempts
+    if (this.initializing) {
+      console.log('[ElizaOS] Initialization already in progress, waiting...');
+      // Wait for the current initialization to complete (with timeout)
+      const maxWait = 30000; // 30 seconds
+      const startTime = Date.now();
+      while (this.initializing && Date.now() - startTime < maxWait) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      if (this.initialized) {
+        console.log('[ElizaOS] Initialization completed while waiting');
+        return;
+      }
+      throw new Error('Initialization timeout - another initialization attempt did not complete');
+    }
+
+    this.initializing = true;
+
     try {
       console.log('[ElizaOS] Initializing ElizaOS service...');
 
       // Validate required environment variables
-      // Map actual env var names to ElizaOS expected names
-      const farcasterFid = process.env.FARCASTER_FID
+      // Map actual env var names to ElizaOS expected names (check both naming conventions)
+      const farcasterFid = process.env.FARCASTER_FID || process.env.BOT_FID
       const neynarApiKey = process.env.NEYNAR_API_KEY || process.env.FARCASTER_NEYNAR_API_KEY
       const signerUuid = process.env.NEYNAR_SIGNER_UUID || process.env.FARCASTER_SIGNER_UUID
+      const farcasterMode = process.env.FARCASTER_MODE || 'webhook'
+
+      console.log('[ElizaOS] Environment variable check:', {
+        farcasterFid: farcasterFid ? 'found' : 'missing',
+        neynarApiKey: neynarApiKey ? 'found' : 'missing',
+        signerUuid: signerUuid ? 'found' : 'missing',
+        checkedVars: {
+          FARCASTER_FID: !!process.env.FARCASTER_FID,
+          BOT_FID: !!process.env.BOT_FID,
+          NEYNAR_API_KEY: !!process.env.NEYNAR_API_KEY,
+          FARCASTER_NEYNAR_API_KEY: !!process.env.FARCASTER_NEYNAR_API_KEY,
+          NEYNAR_SIGNER_UUID: !!process.env.NEYNAR_SIGNER_UUID,
+          FARCASTER_SIGNER_UUID: !!process.env.FARCASTER_SIGNER_UUID
+        }
+      })
 
       if (!farcasterFid || !neynarApiKey || !signerUuid) {
         console.warn('[ElizaOS] ⚠️  Farcaster credentials not found in environment variables');
         console.warn('[ElizaOS] ⚠️  ElizaOS will not be available');
-        console.warn('[ElizaOS] ⚠️  Required: FARCASTER_FID, NEYNAR_API_KEY (or FARCASTER_NEYNAR_API_KEY), NEYNAR_SIGNER_UUID (or FARCASTER_SIGNER_UUID)');
+        console.warn('[ElizaOS] ⚠️  Required: FARCASTER_FID (or BOT_FID), NEYNAR_API_KEY (or FARCASTER_NEYNAR_API_KEY), NEYNAR_SIGNER_UUID (or FARCASTER_SIGNER_UUID)');
         throw new Error('Missing required environment variables for ElizaOS');
       }
 
@@ -128,7 +493,18 @@ export class ElizaService {
             FARCASTER_FID: farcasterFid,
             FARCASTER_NEYNAR_API_KEY: neynarApiKey,
             FARCASTER_SIGNER_UUID: signerUuid,
-            FARCASTER_MODE: process.env.FARCASTER_MODE || 'webhook',
+            // NOTE: @elizaos/plugin-farcaster currently ALWAYS runs a periodic mentions loop.
+            // In webhook mode we effectively disable polling by setting a very large poll interval.
+            FARCASTER_POLL_INTERVAL:
+              farcasterMode === 'webhook'
+                ? (process.env.FARCASTER_POLL_INTERVAL_WEBHOOK_DISABLED || '86400') // 24h
+                : (process.env.FARCASTER_POLL_INTERVAL || '60'), // seconds
+            // Disable background posting + action loops unless explicitly enabled
+            ENABLE_CAST: process.env.ENABLE_CAST || 'false',
+            ENABLE_ACTION_PROCESSING: process.env.ENABLE_ACTION_PROCESSING || 'false',
+            ACTION_INTERVAL: process.env.ACTION_INTERVAL || '60',
+            CAST_INTERVAL_MIN: process.env.CAST_INTERVAL_MIN || '90',
+            CAST_INTERVAL_MAX: process.env.CAST_INTERVAL_MAX || '180',
             FARCASTER_DRY_RUN: process.env.FARCASTER_DRY_RUN || 'false',
           }
         },
@@ -161,8 +537,32 @@ export class ElizaService {
       // Initialize plugins - this is where adapter.isReady() might be called
       console.log('[ElizaOS] Initializing runtime (this may call adapter.isReady)...');
       try {
-        await this.runtime.initialize();
+        // Add timeout to prevent infinite hangs
+        const initPromise = this.runtime.initialize();
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Runtime initialization timeout after 30 seconds')), 30000);
+        });
+        
+        await Promise.race([initPromise, timeoutPromise]);
         console.log('[ElizaOS] Runtime initialized successfully');
+
+        // IMPORTANT: @elizaos/plugin-farcaster always starts a polling loop (mentions/replies).
+        // In webhook mode we do NOT want polling at all (it can spam 429s and flood logs).
+        // We keep the Farcaster client alive for posting, but stop the interactions poller only.
+        if (farcasterMode === 'webhook') {
+          try {
+            const farcasterService: any = this.runtime.getService('farcaster');
+            const manager = farcasterService?.managers?.get?.(this.runtime.agentId);
+            if (manager?.interactions?.stop) {
+              await manager.interactions.stop();
+              console.log('[ElizaOS] Webhook mode: stopped Farcaster interactions poller');
+            } else {
+              console.warn('[ElizaOS] Webhook mode: could not find Farcaster interactions poller to stop');
+            }
+          } catch (stopPollError) {
+            console.warn('[ElizaOS] Webhook mode: error stopping Farcaster interactions poller (continuing):', stopPollError);
+          }
+        }
       } catch (initError: any) {
         console.error('[ElizaOS] Runtime initialization failed:', initError);
         console.error('[ElizaOS] Error details:', {
@@ -171,12 +571,22 @@ export class ElizaService {
           adapterType: adapter?.constructor?.name,
           hasIsReady: typeof (adapter as any)?.isReady === 'function'
         });
+        // Best-effort stop to prevent background loops (plugin-farcaster starts pollers)
+        try {
+          await this.runtime?.stop?.();
+        } catch (stopError) {
+          console.warn('[ElizaOS] Runtime stop warning (continuing):', stopError);
+        }
+        this.runtime = null;
+        this.initializing = false;
         throw initError;
       }
 
       this.initialized = true;
+      this.initializing = false;
       console.log('[ElizaOS] Service initialized successfully');
     } catch (error) {
+      this.initializing = false;
       console.error('[ElizaOS] Failed to initialize service:', error);
       throw error;
     }
@@ -287,20 +697,22 @@ export class ElizaService {
    * Cleanup and shutdown the service
    */
   async shutdown(): Promise<void> {
-    if (!this.initialized) {
-      return;
-    }
-
     try {
       console.log('[ElizaOS] Shutting down service...');
       
       // Cleanup runtime resources
       if (this.runtime) {
-        // Add any cleanup logic here if needed
+        try {
+          await this.runtime.stop?.();
+          console.log('[ElizaOS] Runtime stopped');
+        } catch (stopError) {
+          console.warn('[ElizaOS] Runtime stop warning (continuing):', stopError);
+        }
         this.runtime = null;
       }
 
       this.initialized = false;
+      this.initializing = false;
       console.log('[ElizaOS] Service shutdown complete');
     } catch (error) {
       console.error('[ElizaOS] Error during shutdown:', error);
