@@ -1,5 +1,8 @@
 // Scatter API utilities for minting
 
+// Scatter collection configuration
+export const SCATTER_COLLECTION_SLUG = 'academic-angels'
+
 export interface CollectionInfo {
   address: string
   chainId: number

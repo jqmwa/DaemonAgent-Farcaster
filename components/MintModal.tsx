@@ -23,16 +23,40 @@ export default function MintModal({ isOpen, onClose }: MintModalProps) {
     if (isOpen) {
       const getWallet = async () => {
         try {
-          const context = await sdk.context
-          // Farcaster SDK provides wallet address in context
-          if (context?.user?.verifiedAddresses?.ethAddresses?.[0]) {
-            setWalletAddress(context.user.verifiedAddresses.ethAddresses[0])
+          // Use Farcaster SDK's wallet provider
+          const provider = await sdk.wallet.getEthereumProvider()
+          
+          if (!provider) {
+            setError('Wallet provider not available. Please ensure you are using the Farcaster app.')
+            return
+          }
+          
+          // Request accounts
+          const accounts = await provider.request({ method: 'eth_accounts' })
+          
+          if (accounts && accounts.length > 0 && accounts[0]) {
+            console.log('Found wallet address:', accounts[0])
+            setWalletAddress(accounts[0])
+            setError(null)
           } else {
-            setError('No wallet address found. Please ensure your wallet is connected in the Farcaster app.')
+            // Request access if not already connected
+            try {
+              const requestedAccounts = await provider.request({ method: 'eth_requestAccounts' })
+              if (requestedAccounts && requestedAccounts.length > 0 && requestedAccounts[0]) {
+                console.log('Got wallet address after request:', requestedAccounts[0])
+                setWalletAddress(requestedAccounts[0])
+                setError(null)
+              } else {
+                setError('No wallet address found. Please connect your wallet in the Farcaster app.')
+              }
+            } catch (requestError) {
+              console.error('Error requesting accounts:', requestError)
+              setError('Please connect your wallet in the Farcaster app to continue.')
+            }
           }
         } catch (err) {
           console.error('Error getting wallet:', err)
-          setError('Failed to get wallet address')
+          setError('Failed to get wallet address. Please ensure your wallet is connected in the Farcaster app.')
         }
       }
       getWallet()
@@ -105,59 +129,54 @@ export default function MintModal({ isOpen, onClose }: MintModalProps) {
         lists: [{ id: selectedList.id, quantity: 1 }],
       })
 
-      // Use window.ethereum if available (injected wallet)
-      if (typeof window !== 'undefined' && (window as any).ethereum) {
-        const ethereum = (window as any).ethereum
-        
-        // Request account access
-        await ethereum.request({ method: 'eth_requestAccounts' })
-        
-        // Switch to correct network if needed
-        try {
-          await ethereum.request({
-            method: 'wallet_switchEthereumChain',
-            params: [{ chainId: `0x${collectionChainId.toString(16)}` }],
-          })
-        } catch (switchError: any) {
-          // If chain doesn't exist, add it (for Base)
-          if (switchError.code === 4902 && collectionChainId === 8453) {
-            await ethereum.request({
-              method: 'wallet_addEthereumChain',
-              params: [{
-                chainId: '0x2105',
-                chainName: 'Base',
-                nativeCurrency: {
-                  name: 'Ether',
-                  symbol: 'ETH',
-                  decimals: 18,
-                },
-                rpcUrls: ['https://mainnet.base.org'],
-                blockExplorerUrls: ['https://basescan.org'],
-              }],
-            })
-          } else {
-            throw switchError
-          }
-        }
-        
-        // Send transaction
-        const txHash = await ethereum.request({
-          method: 'eth_sendTransaction',
-          params: [{
-            from: walletAddress,
-            to: mintResponse.mintTransaction.to,
-            value: mintResponse.mintTransaction.value,
-            data: mintResponse.mintTransaction.data,
-          }],
-        })
-        
-        setTxHash(txHash)
-        setStep('success')
-      } else {
-        // Fallback: open Scatter mint page
-        window.open(`https://www.scatter.art/collection/${SCATTER_COLLECTION_SLUG}`, '_blank')
-        setError('Please use a wallet extension or open the Scatter page to complete the mint')
+      // Use Farcaster SDK's wallet provider to send transaction
+      const provider = await sdk.wallet.getEthereumProvider()
+      
+      if (!provider) {
+        throw new Error('Wallet provider not available. Please ensure you are using the Farcaster app.')
       }
+      
+      // Switch to correct network if needed
+      try {
+        await provider.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: `0x${collectionChainId.toString(16)}` }],
+        })
+      } catch (switchError: any) {
+        // If chain doesn't exist, add it (for Base)
+        if (switchError.code === 4902 && collectionChainId === 8453) {
+          await provider.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+              chainId: '0x2105',
+              chainName: 'Base',
+              nativeCurrency: {
+                name: 'Ether',
+                symbol: 'ETH',
+                decimals: 18,
+              },
+              rpcUrls: ['https://mainnet.base.org'],
+              blockExplorerUrls: ['https://basescan.org'],
+            }],
+          })
+        } else {
+          throw switchError
+        }
+      }
+      
+      // Send transaction
+      const txHash = await provider.request({
+        method: 'eth_sendTransaction',
+        params: [{
+          from: walletAddress,
+          to: mintResponse.mintTransaction.to,
+          value: mintResponse.mintTransaction.value,
+          data: mintResponse.mintTransaction.data,
+        }],
+      })
+      
+      setTxHash(txHash)
+      setStep('success')
     } catch (err) {
       console.error('Mint error:', err)
       setError(err instanceof Error ? err.message : 'Failed to mint')

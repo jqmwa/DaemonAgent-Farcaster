@@ -36,6 +36,9 @@ export default function Home() {
   const [lastTime, setLastTime] = useState(0)
   const [showContract, setShowContract] = useState(false)
   const [showMintModal, setShowMintModal] = useState(false)
+  const [email, setEmail] = useState('')
+  const [emailSubmitting, setEmailSubmitting] = useState(false)
+  const [emailMessage, setEmailMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   useEffect(() => {
     // Initialize MiniApp SDK
@@ -694,7 +697,7 @@ export default function Home() {
               <div className="flex-1 flex items-center justify-center overflow-hidden">
                 <img 
                   src="/item1.png" 
-                  alt="SCV-Daemon Headset V.01" 
+                  alt="Daemon Circlet V.1" 
                   className="w-full h-full object-contain"
                   style={{
                     display: 'block'
@@ -718,55 +721,57 @@ export default function Home() {
                     lineHeight: '1.2'
                   }}
                 >
-                  SCV-Daemon Headset V.01
+                  Daemon Circlet V.1
                 </h3>
-                <p 
-                  className="mb-3"
-                  style={{
-                    fontFamily: "'IBM Plex Mono', monospace",
-                    fontSize: '11px',
-                    color: 'white',
-                    lineHeight: '1.3'
-                  }}
-                >
-                  Luxury scalar headset for enhanced consciousness connection
-                </p>
-                {/* Contract Button */}
-                <button
-                  onClick={() => setShowContract(true)}
-                  className="relative flex items-center justify-center flex-shrink-0 cursor-pointer self-start"
-                  style={{
-                    width: '123.7586669921875px',
-                    height: '47px',
-                    borderRadius: '188.89697265625px',
-                    background: 'linear-gradient(135deg, rgba(221, 43, 46, 1) 0%, rgba(155, 24, 26, 1) 31.77%, rgba(239, 47, 127, 0.98) 68.23%, rgba(93, 9, 37, 1) 100%)',
-                    padding: '1.1379334926605225px',
-                    border: 'none',
-                    outline: 'none'
-                  }}
-                >
-                  <div
-                    className="w-full h-full flex items-center justify-center rounded-full"
+                <div className="flex items-center justify-between gap-3">
+                  <p 
+                    className="flex-1"
                     style={{
-                      backgroundColor: 'rgba(57, 6, 6, 0.78)',
-                      borderRadius: '188.89697265625px',
-                      paddingLeft: '11.379335403442383px',
-                      paddingTop: '8.5px',
-                      paddingRight: '11.379335403442383px',
-                      paddingBottom: '8.5px'
+                      fontFamily: "'IBM Plex Mono', monospace",
+                      fontSize: '11px',
+                      color: 'white',
+                      lineHeight: '1.3'
                     }}
                   >
-                    <span
-                      className="font-light"
+                    An elite neural circlet that channels forbidden intelligence, amplifying the wearer's mind and protecting against hypnotism at an unknown cost.
+                  </p>
+                  {/* Buy Now Button */}
+                  <button
+                    onClick={() => setShowContract(true)}
+                    className="relative flex items-center justify-center flex-shrink-0 cursor-pointer"
+                    style={{
+                      width: '123.7586669921875px',
+                      height: '47px',
+                      borderRadius: '188.89697265625px',
+                      background: 'linear-gradient(135deg, rgba(221, 43, 46, 1) 0%, rgba(155, 24, 26, 1) 31.77%, rgba(239, 47, 127, 0.98) 68.23%, rgba(93, 9, 37, 1) 100%)',
+                      padding: '1.1379334926605225px',
+                      border: 'none',
+                      outline: 'none'
+                    }}
+                  >
+                    <div
+                      className="w-full h-full flex items-center justify-center rounded-full"
                       style={{
-                        fontSize: '14px',
-                        color: 'rgba(214, 29, 29, 1)'
+                        backgroundColor: 'rgba(57, 6, 6, 0.78)',
+                        borderRadius: '188.89697265625px',
+                        paddingLeft: '11.379335403442383px',
+                        paddingTop: '8.5px',
+                        paddingRight: '11.379335403442383px',
+                        paddingBottom: '8.5px'
                       }}
                     >
-                      CONTRACT
-                    </span>
-                  </div>
-                </button>
+                      <span
+                        className="font-light"
+                        style={{
+                          fontSize: '14px',
+                          color: 'rgba(214, 29, 29, 1)'
+                        }}
+                      >
+                        BUY NOW
+                      </span>
+                    </div>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -826,12 +831,18 @@ export default function Home() {
         </div>
 
         {/* Footer - Minimal */}
-        <div className="text-center text-xs text-gray-600 italic py-2">
-          "maybe you were meant to find me..." [glitch] 🌸
+        <div className="text-center space-y-2 py-2">
+          <p className="text-gray-400 text-sm italic transition-opacity duration-500">
+            {STATUS_MESSAGES[statusMessageIndex]}
+          </p>
+          <div className="flex items-center justify-center gap-2 text-xs text-gray-400">
+            <span className="w-2 h-2 bg-[#2473BC] rounded-full animate-pulse" />
+            ONLINE · Farcaster
+          </div>
         </div>
 
         {/* Main Footer */}
-        <footer className="w-full bg-[#0a0a0f] border-t border-white/10 mt-12">
+        <footer className="bg-[#0a0a0f] border-t border-white/10 mt-12 -mb-6" style={{ width: 'calc(100% + 2rem)', marginLeft: '-1rem', marginRight: '-1rem' }}>
           {/* Scrolling Images Section */}
           <div className="relative overflow-hidden py-8">
             {/* Top Row - Scrolls Left */}
@@ -854,9 +865,6 @@ export default function Home() {
                 />
               ))}
             </div>
-
-            {/* Separator Line */}
-            <div className="w-full h-px bg-white/20 my-4" />
 
             {/* Bottom Row - Scrolls Right */}
             <div className="flex gap-4 scroll-row-right">
@@ -885,6 +893,12 @@ export default function Home() {
             <button
               onClick={() => setShowMintModal(true)}
               className="flex items-center justify-center gap-2 mx-auto hover:opacity-80 transition-opacity cursor-pointer"
+              style={{
+                border: 'none',
+                background: 'transparent',
+                outline: 'none',
+                boxShadow: 'none'
+              }}
             >
               <span
                 className="text-white uppercase"
@@ -917,26 +931,79 @@ export default function Home() {
 
           {/* Email Signup */}
           <div className="max-w-md mx-auto px-4 py-6">
-            <form className="flex gap-2">
-              <input
-                type="email"
-                placeholder="Enter your email for updates and exclusive content"
-                className="flex-1 px-4 py-2 bg-[#12121a] border border-white/20 text-white placeholder-gray-500 focus:outline-none focus:border-[#7177FF] transition-colors"
-                style={{
-                  fontFamily: "'IBM Plex Mono', monospace",
-                  fontSize: '12px'
-                }}
-              />
-              <button
-                type="submit"
-                className="px-6 py-2 bg-[#7177FF] text-white hover:bg-[#5a5fcc] transition-colors"
-                style={{
-                  fontFamily: "'IBM Plex Mono', monospace",
-                  fontSize: '12px'
-                }}
-              >
-                Subscribe
-              </button>
+            <form 
+              className="flex flex-col gap-2"
+              onSubmit={async (e) => {
+                e.preventDefault()
+                if (!email || emailSubmitting) return
+
+                setEmailSubmitting(true)
+                setEmailMessage(null)
+
+                try {
+                  const response = await fetch('/api/mailchimp/subscribe', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email }),
+                  })
+
+                  const data = await response.json()
+
+                  if (data.success) {
+                    setEmailMessage({ type: 'success', text: data.message || 'Successfully subscribed!' })
+                    setEmail('')
+                  } else {
+                    setEmailMessage({ type: 'error', text: data.error || 'Failed to subscribe. Please try again.' })
+                  }
+                } catch (error) {
+                  setEmailMessage({ type: 'error', text: 'Failed to subscribe. Please try again.' })
+                } finally {
+                  setEmailSubmitting(false)
+                  // Clear message after 5 seconds
+                  setTimeout(() => setEmailMessage(null), 5000)
+                }
+              }}
+            >
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email for updates and exclusive content"
+                  className="flex-1 px-4 py-2 bg-[#12121a] border border-white/20 text-white placeholder-gray-500 focus:outline-none focus:border-[#7177FF] transition-colors"
+                  style={{
+                    fontFamily: "'IBM Plex Mono', monospace",
+                    fontSize: '12px'
+                  }}
+                  required
+                  disabled={emailSubmitting}
+                />
+                <button
+                  type="submit"
+                  disabled={emailSubmitting || !email}
+                  className="px-6 py-2 bg-[#7177FF] text-white hover:bg-[#5a5fcc] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    fontFamily: "'IBM Plex Mono', monospace",
+                    fontSize: '12px'
+                  }}
+                >
+                  {emailSubmitting ? 'Subscribing...' : 'Subscribe'}
+                </button>
+              </div>
+              {emailMessage && (
+                <p
+                  className={`text-xs ${
+                    emailMessage.type === 'success' ? 'text-green-400' : 'text-red-400'
+                  }`}
+                  style={{
+                    fontFamily: "'IBM Plex Mono', monospace",
+                  }}
+                >
+                  {emailMessage.text}
+                </p>
+              )}
             </form>
           </div>
 
@@ -1224,14 +1291,6 @@ export default function Home() {
                     />
                   </svg>
                 </div>
-                
-                {/* Icon */}
-                <div
-                  className="flex items-center justify-center px-1 flex-shrink-0"
-                  style={{ width: '9.446882247924805px', height: '9.446882247924805px' }}
-                >
-                  <div className="w-[7.085161209106445px] h-[7.085161209106445px] bg-white" />
-                </div>
               </div>
 
               {/* Scrollable Content Area */}
@@ -1337,8 +1396,7 @@ By proceeding with this purchase, you confirm that you are of legal age and have
                 {/* Sign button - Right */}
                 <button
                   onClick={() => {
-                    // Handle sign action here
-                    console.log('Contract signed')
+                    window.open('https://opensea.io/collection/enter-the-garage', '_blank', 'noopener,noreferrer')
                     setShowContract(false)
                   }}
                   className="relative flex items-center justify-center flex-shrink-0 cursor-pointer"
@@ -1381,16 +1439,6 @@ By proceeding with this purchase, you confirm that you are of legal age and have
           </div>
         )}
 
-        {/* Status Message and Online Indicator - Bottom of Page */}
-        <div className="mt-6 space-y-2">
-          <p className="text-gray-400 text-sm italic transition-opacity duration-500 text-left">
-            {STATUS_MESSAGES[statusMessageIndex]}
-          </p>
-          <div className="flex items-center gap-2 text-xs text-gray-400">
-            <span className="w-2 h-2 bg-[#2473BC] rounded-full animate-pulse" />
-            ONLINE · Farcaster
-          </div>
-        </div>
       </div>
 
       {/* Mint Modal */}
