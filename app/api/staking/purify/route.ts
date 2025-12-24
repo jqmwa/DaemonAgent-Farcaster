@@ -5,10 +5,20 @@ import { getStakingRecord, setStakingRecord } from '@/lib/staking-storage'
 // Helper function to check if user owns Angel NFT
 // In production, check against NFT contract on Base
 async function checkAngelOwnership(walletAddress: string): Promise<boolean> {
-  // TODO: Implement actual NFT ownership check
-  // Example: Query Base NFT contract to see if wallet owns Angel NFT
-  // For now, return true for testing
-  return true
+  try {
+    // Call the check-angel API endpoint
+    const baseUrl = process.env.NEXT_PUBLIC_URL || process.env.VERCEL_URL || 'http://localhost:3000'
+    const protocol = baseUrl.startsWith('http') ? '' : 'https://'
+    const url = `${protocol}${baseUrl}/api/staking/check-angel?wallet=${walletAddress}`
+    
+    const response = await fetch(url)
+    const result = await response.json()
+    return result.success && result.hasAngel === true
+  } catch (error) {
+    console.error('[Purify API] Error checking Angel ownership:', error)
+    // For now, return false (implement real check)
+    return false
+  }
 }
 
 // POST - Purify staked tokens (requires Angel NFT)

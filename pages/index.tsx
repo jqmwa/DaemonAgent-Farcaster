@@ -405,7 +405,9 @@ export default function Home() {
 
       {/* Profile Page */}
       {currentPage === 'profile' && (
-        <ProfilePage userProfile={userProfile} />
+        <ProfilePage 
+          userProfile={userProfile} 
+        />
       )}
 
       {/* Main DAEMON Page */}

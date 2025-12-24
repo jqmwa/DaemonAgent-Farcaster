@@ -1,4 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { sdk } from '@farcaster/miniapp-sdk'
+import { getStakingData, stakeTokens, purifyTokens, harvestTokens } from '@/lib/staking-service'
+import { getFidFromUsername, getWalletAddress } from '@/lib/farcaster-utils'
+import { StakingData } from '@/lib/staking-service'
+import StakeModal from './StakeModal'
 
 interface ProfilePageProps {
   userProfile: {
@@ -9,17 +14,218 @@ interface ProfilePageProps {
 }
 
 export default function ProfilePage({ userProfile }: ProfilePageProps) {
-  // Mock user daemon data - would be fetched from blockchain/API
-  const [userDaemonData, setUserDaemonData] = useState({
-    daemonPoints: 2847,
-    stakedDaemon: '15,000',
-    harvestingDaemon: '3,250',
-    purifiedDaemons: 7,
-    holdsAngel: true,
-    lockedDaemon: '11,750' // Staked but not yet purified
-  })
-
+  const [stakingData, setStakingData] = useState<StakingData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [walletAddress, setWalletAddress] = useState<string | null>(null)
+  const [userFid, setUserFid] = useState<number | null>(null)
   const [showTooltip, setShowTooltip] = useState<string | null>(null)
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [showStakeModal, setShowStakeModal] = useState(false)
+
+  // Get FID and wallet on mount
+  useEffect(() => {
+    const initializeUser = async () => {
+      try {
+        // Get wallet address
+        const wallet = await getWalletAddress()
+        setWalletAddress(wallet)
+
+        // Get FID from username if available
+        if (userProfile?.username) {
+          const fid = await getFidFromUsername(userProfile.username)
+          if (fid) {
+            setUserFid(fid)
+          }
+        }
+
+        // Try to get FID from SDK context
+        try {
+          const context = await sdk.context
+          if (context?.user?.fid) {
+            setUserFid(context.user.fid)
+          }
+        } catch (e) {
+          // SDK context might not have FID
+        }
+      } catch (err) {
+        console.error('[ProfilePage] Error initializing user:', err)
+      }
+    }
+
+    initializeUser()
+  }, [userProfile])
+
+  // Fetch staking data when FID is available
+  useEffect(() => {
+    const fetchStakingData = async () => {
+      if (!userFid) {
+        setLoading(false)
+        return
+      }
+
+      try {
+        setLoading(true)
+        const data = await getStakingData(userFid)
+        setStakingData(data)
+        setError(null)
+      } catch (err) {
+        console.error('[ProfilePage] Error fetching staking data:', err)
+        setError('Failed to load staking data')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchStakingData()
+
+    // Refresh every 30 seconds to update consecutive days
+    const interval = setInterval(fetchStakingData, 30000)
+    return () => clearInterval(interval)
+  }, [userFid])
+
+  // Format staked amount for display
+  const formatStakedAmount = (amount: string): string => {
+    try {
+      const num = BigInt(amount)
+      const formatted = (Number(num) / 1e18).toLocaleString('en-US', {
+        maximumFractionDigits: 2,
+        minimumFractionDigits: 0
+      })
+      return formatted
+    } catch {
+      return amount
+    }
+  }
+
+  // Handle stake action
+  const handleStake = async (amount: string) => {
+    if (!userFid || !walletAddress) {
+      setError('Please connect your wallet')
+      return
+    }
+
+    try {
+      setActionLoading('stake')
+      setError(null)
+
+      // TODO: Send actual transaction to smart contract first
+      // Then call API with txHash for verification
+      // For now, we'll just update the backend record
+      
+      const result = await stakeTokens({
+        fid: userFid,
+        walletAddress,
+        amount
+      })
+
+      if (result) {
+        // Refresh staking data
+        const updated = await getStakingData(userFid)
+        setStakingData(updated)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to stake tokens')
+      throw err // Re-throw so modal can handle it
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  // Handle purify action
+  const handlePurify = async () => {
+    if (!userFid || !walletAddress) {
+      setError('Please connect your wallet')
+      return
+    }
+
+    try {
+      setActionLoading('purify')
+      setError(null)
+
+      const result = await purifyTokens({
+        fid: userFid,
+        walletAddress
+      })
+
+      if (result) {
+        // Refresh staking data
+        const updated = await getStakingData(userFid)
+        setStakingData(updated)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to purify tokens')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  // Handle harvest action
+  const handleHarvest = async () => {
+    if (!userFid || !walletAddress || !stakingData) {
+      setError('Please connect your wallet')
+      return
+    }
+
+    if (!stakingData.harvestable || stakingData.harvestable === 0) {
+      setError('No tokens available to harvest')
+      return
+    }
+
+    try {
+      setActionLoading('harvest')
+      setError(null)
+
+      // Harvest all available
+      const result = await harvestTokens({
+        fid: userFid,
+        walletAddress,
+        amount: stakingData.harvestable
+      })
+
+      if (result) {
+        // Refresh staking data
+        const updated = await getStakingData(userFid)
+        setStakingData(updated)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to harvest tokens')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  // Check if user holds Angel NFT
+  const [holdsAngel, setHoldsAngel] = useState(false)
+
+  useEffect(() => {
+    const checkAngel = async () => {
+      if (!walletAddress) {
+        setHoldsAngel(false)
+        return
+      }
+
+      try {
+        const response = await fetch(`/api/staking/check-angel?wallet=${walletAddress}`)
+        const result = await response.json()
+        if (result.success) {
+          setHoldsAngel(result.hasAngel || false)
+        }
+      } catch (error) {
+        console.error('[ProfilePage] Error checking Angel:', error)
+        setHoldsAngel(false)
+      }
+    }
+
+    checkAngel()
+  }, [walletAddress])
+
+  // Use real data or fallback to defaults
+  const stakedAmount = stakingData?.stakedAmount || '0'
+  const consecutiveDays = stakingData?.consecutiveDays || 0
+  const purifiedDaemons = stakingData?.purifiedDaemons || 0
+  const harvestable = stakingData?.harvestable || 0
+  const isPurified = stakingData?.isPurified || false
 
   return (
     <div 
@@ -36,6 +242,27 @@ export default function ProfilePage({ userProfile }: ProfilePageProps) {
       >
         Profile
       </h1>
+
+      {/* Error Message */}
+      {error && (
+        <div
+          className="mb-4 p-3"
+          style={{
+            background: 'rgba(255, 31, 30, 0.1)',
+            borderRadius: '8px 4px 6px 10px',
+            border: '1px solid rgba(255, 31, 30, 0.3)'
+          }}
+        >
+          <p className="text-[#FF1F1E] text-xs">{error}</p>
+        </div>
+      )}
+
+      {/* Loading State */}
+      {loading && (
+        <div className="mb-4 text-center">
+          <p className="text-gray-400 text-xs">Loading staking data...</p>
+        </div>
+      )}
 
       {/* User Profile + Points Row */}
       <div 
@@ -96,12 +323,17 @@ export default function ProfilePage({ userProfile }: ProfilePageProps) {
                 backgroundClip: 'text'
               }}
             >
-              {userDaemonData.daemonPoints.toLocaleString()}
+              {stakingData?.totalHarvested ? stakingData.totalHarvested.toLocaleString() : '0'}
             </span>
             <span className="text-gray-500 text-sm">pts</span>
           </div>
           {userProfile?.username && (
             <p className="text-gray-400 text-xs mt-1">@{userProfile.username}</p>
+          )}
+          {consecutiveDays > 0 && (
+            <p className="text-[#7FFF5B] text-xs mt-1">
+              {consecutiveDays} day{consecutiveDays !== 1 ? 's' : ''} staked
+            </p>
           )}
         </div>
       </div>
@@ -110,14 +342,14 @@ export default function ProfilePage({ userProfile }: ProfilePageProps) {
       <div
         className="flex items-center gap-3 p-4 mb-6 relative"
         style={{
-          background: userDaemonData.holdsAngel 
+          background: holdsAngel 
             ? 'linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 255, 80, 0.08) 100%)'
             : 'rgba(18, 18, 26, 0.5)',
           borderRadius: '10px 16px 8px 14px',
-          border: userDaemonData.holdsAngel 
+          border: holdsAngel 
             ? '2px solid rgba(255, 215, 0, 0.4)'
             : '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: userDaemonData.holdsAngel 
+          boxShadow: holdsAngel 
             ? '0 0 30px rgba(255, 215, 0, 0.2)' 
             : 'none'
         }}
@@ -131,12 +363,12 @@ export default function ProfilePage({ userProfile }: ProfilePageProps) {
             width: '40px',
             height: '40px',
             borderRadius: '12px 6px 10px 8px',
-            background: userDaemonData.holdsAngel 
+            background: holdsAngel 
               ? 'rgba(255, 215, 0, 0.2)'
               : 'rgba(255, 255, 255, 0.05)'
           }}
         >
-          {userDaemonData.holdsAngel ? (
+          {holdsAngel ? (
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 2L14 8L20 8L15 12L17 18L12 14L7 18L9 12L4 8L10 8L12 2Z" fill="#FFD700" />
               <circle cx="12" cy="12" r="3" fill="#FFF8DC" />
@@ -152,19 +384,19 @@ export default function ProfilePage({ userProfile }: ProfilePageProps) {
           <p 
             className="text-sm font-medium"
             style={{ 
-              color: userDaemonData.holdsAngel ? '#FFD700' : 'rgba(255, 255, 255, 0.4)'
+              color: holdsAngel ? '#FFD700' : 'rgba(255, 255, 255, 0.4)'
             }}
           >
-            {userDaemonData.holdsAngel ? 'Angel Holder ✨' : 'No Angel'}
+            {holdsAngel ? 'Angel Holder ✨' : 'No Angel'}
           </p>
           <p className="text-xs text-gray-500">
-            {userDaemonData.holdsAngel 
+            {holdsAngel 
               ? 'You can purify staked DAEMON to harvest rewards' 
               : 'Mint an Angel NFT to unlock purification'}
           </p>
         </div>
 
-        {userDaemonData.holdsAngel && (
+        {holdsAngel && (
           <>
             <div 
               className="w-2 h-2 rounded-full animate-pulse"
@@ -193,7 +425,7 @@ export default function ProfilePage({ userProfile }: ProfilePageProps) {
       </div>
 
       {/* Connection Flow Visualization */}
-      {userDaemonData.holdsAngel && (
+      {holdsAngel && stakedAmount !== '0' && (
         <div
           className="mb-6 p-4"
           style={{
@@ -205,7 +437,7 @@ export default function ProfilePage({ userProfile }: ProfilePageProps) {
           <div className="flex items-center justify-between gap-4 mb-3">
             <div className="flex-1">
               <p className="text-xs text-gray-400 mb-1">Staked DAEMON</p>
-              <p className="text-white text-lg font-bold">{userDaemonData.stakedDaemon}</p>
+              <p className="text-white text-lg font-bold">{formatStakedAmount(stakedAmount)}</p>
             </div>
             <div className="flex items-center" style={{ color: '#7177FF' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -214,21 +446,21 @@ export default function ProfilePage({ userProfile }: ProfilePageProps) {
             </div>
             <div className="flex-1 text-right">
               <p className="text-xs text-gray-400 mb-1">Purified → Harvestable</p>
-              <p className="text-[#2473BC] text-lg font-bold">{userDaemonData.harvestingDaemon}</p>
+              <p className="text-[#2473BC] text-lg font-bold">{harvestable}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 text-xs">
             <div className="flex-1 h-1 rounded-full" style={{ background: 'rgba(113, 119, 255, 0.2)' }}>
               <div 
-                className="h-full rounded-full"
+                className="h-full rounded-full transition-all"
                 style={{ 
-                  width: `${(parseFloat(userDaemonData.harvestingDaemon.replace(/,/g, '')) / parseFloat(userDaemonData.stakedDaemon.replace(/,/g, ''))) * 100}%`,
+                  width: `${stakedAmount !== '0' ? (harvestable / consecutiveDays) * 100 : 0}%`,
                   background: 'linear-gradient(90deg, #7177FF 0%, #2473BC 100%)'
                 }}
               />
             </div>
             <span className="text-gray-500">
-              {userDaemonData.purifiedDaemons} purified
+              {purifiedDaemons} purified
             </span>
           </div>
         </div>
@@ -286,14 +518,19 @@ export default function ProfilePage({ userProfile }: ProfilePageProps) {
               </div>
               <div>
                 <p className="text-gray-500 text-xs uppercase">Staked DAEMON</p>
-                <p className="text-white text-xl font-bold">{userDaemonData.stakedDaemon}</p>
-                {!userDaemonData.holdsAngel && (
+                <p className="text-white text-xl font-bold">{formatStakedAmount(stakedAmount)}</p>
+                {consecutiveDays > 0 && (
+                  <p className="text-[#7FFF5B] text-xs mt-1">{consecutiveDays} consecutive day{consecutiveDays !== 1 ? 's' : ''}</p>
+                )}
+                {!holdsAngel && stakedAmount !== '0' && (
                   <p className="text-gray-500 text-xs mt-1">Locked until purified</p>
                 )}
               </div>
             </div>
             <button
-              className="px-4 py-2 text-xs uppercase transition-all hover:scale-105"
+              onClick={() => setShowStakeModal(true)}
+              disabled={actionLoading === 'stake' || !walletAddress}
+              className="px-4 py-2 text-xs uppercase transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
                 background: 'linear-gradient(135deg, rgba(113, 119, 255, 0.2) 0%, rgba(113, 119, 255, 0.1) 100%)',
                 borderRadius: '8px 4px 6px 10px',
@@ -301,7 +538,7 @@ export default function ProfilePage({ userProfile }: ProfilePageProps) {
                 border: '1px solid rgba(113, 119, 255, 0.3)'
               }}
             >
-              Stake
+              {actionLoading === 'stake' ? 'Staking...' : 'Stake'}
             </button>
           </div>
           {showTooltip === 'stake' && (
@@ -316,14 +553,15 @@ export default function ProfilePage({ userProfile }: ProfilePageProps) {
             >
               <p className="text-xs text-[#7177FF] font-medium mb-1">Staking Explained</p>
               <p className="text-xs text-gray-300 leading-relaxed">
-                Staking locks your $DAEMON tokens to earn passive rewards. Tokens remain locked until purified by an Angel holder.
+                Staking locks your $DAEMON tokens to earn passive rewards. Each consecutive day staked = 1 purified daemon (if you have an Angel). 
+                Unstaking resets your streak.
               </p>
             </div>
           )}
         </div>
 
         {/* Purified DAEMONs - Show connection to harvesting */}
-        {userDaemonData.holdsAngel && (
+        {holdsAngel && purifiedDaemons > 0 && (
           <div
             className="p-4 relative"
             style={{
@@ -355,14 +593,16 @@ export default function ProfilePage({ userProfile }: ProfilePageProps) {
                 <div>
                   <p className="text-gray-500 text-xs uppercase">Purified DAEMONs</p>
                   <div className="flex items-baseline gap-2">
-                    <p className="text-white text-xl font-bold">{userDaemonData.purifiedDaemons}</p>
+                    <p className="text-white text-xl font-bold">{purifiedDaemons}</p>
                     <span className="text-gray-500 text-sm">collected</span>
                   </div>
-                  <p className="text-[#2473BC] text-xs mt-1">→ Ready to harvest</p>
+                  <p className="text-[#2473BC] text-xs mt-1">→ {harvestable} ready to harvest</p>
                 </div>
               </div>
               <button
-                className="px-4 py-2 text-xs uppercase transition-all hover:scale-105"
+                onClick={handlePurify}
+                disabled={actionLoading === 'purify' || isPurified || !walletAddress}
+                className="px-4 py-2 text-xs uppercase transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
                   background: 'linear-gradient(135deg, rgba(239, 47, 127, 0.2) 0%, rgba(239, 47, 127, 0.1) 100%)',
                   borderRadius: '10px 6px 4px 8px',
@@ -370,7 +610,7 @@ export default function ProfilePage({ userProfile }: ProfilePageProps) {
                   border: '1px solid rgba(239, 47, 127, 0.3)'
                 }}
               >
-                Purify
+                {actionLoading === 'purify' ? 'Purifying...' : isPurified ? 'Purified' : 'Purify'}
               </button>
             </div>
             {showTooltip === 'purify' && (
@@ -385,11 +625,11 @@ export default function ProfilePage({ userProfile }: ProfilePageProps) {
               >
                 <p className="text-xs text-[#EF2F7F] font-medium mb-1">Purification Process</p>
                 <p className="text-xs text-gray-300 leading-relaxed mb-2">
-                  As an Angel holder, you can purify your staked DAEMON. Each purified token becomes harvestable, 
-                  allowing you to collect rewards and DAEMON Points.
+                  As an Angel holder, you can purify your staked DAEMON. Each consecutive day staked = 1 purified daemon. 
+                  Purified daemons become harvestable, allowing you to collect rewards and DAEMON Points.
                 </p>
                 <p className="text-xs text-[#2473BC] font-medium">
-                  {userDaemonData.harvestingDaemon} DAEMON ready to harvest from {userDaemonData.purifiedDaemons} purified tokens
+                  {harvestable} DAEMON ready to harvest from {purifiedDaemons} purified tokens
                 </p>
               </div>
             )}
@@ -402,7 +642,7 @@ export default function ProfilePage({ userProfile }: ProfilePageProps) {
           style={{
             background: 'linear-gradient(135deg, rgba(36, 115, 188, 0.08) 0%, rgba(18, 18, 26, 0.9) 100%)',
             borderRadius: '8px 14px 18px 12px',
-            border: userDaemonData.harvestingDaemon !== '0' ? '2px solid rgba(36, 115, 188, 0.4)' : '1px solid rgba(36, 115, 188, 0.2)'
+            border: harvestable > 0 ? '2px solid rgba(36, 115, 188, 0.4)' : '1px solid rgba(36, 115, 188, 0.2)'
           }}
           onMouseEnter={() => setShowTooltip('harvest')}
           onMouseLeave={() => setShowTooltip(null)}
@@ -428,20 +668,24 @@ export default function ProfilePage({ userProfile }: ProfilePageProps) {
               </div>
               <div>
                 <p className="text-gray-500 text-xs uppercase">Harvesting</p>
-                <p className="text-white text-xl font-bold">{userDaemonData.harvestingDaemon}</p>
-                {userDaemonData.holdsAngel && userDaemonData.harvestingDaemon !== '0' && (
+                <p className="text-white text-xl font-bold">{harvestable}</p>
+                {holdsAngel && harvestable > 0 && (
                   <p className="text-[#7FFF5B] text-xs mt-1">✓ Ready to collect</p>
                 )}
-                {!userDaemonData.holdsAngel && (
+                {!holdsAngel && (
                   <p className="text-gray-500 text-xs mt-1">Requires Angel + Purification</p>
+                )}
+                {holdsAngel && harvestable === 0 && isPurified && (
+                  <p className="text-gray-500 text-xs mt-1">All harvested</p>
                 )}
               </div>
             </div>
             <button
-              disabled={userDaemonData.harvestingDaemon === '0' || !userDaemonData.holdsAngel}
+              onClick={handleHarvest}
+              disabled={harvestable === 0 || !holdsAngel || !walletAddress || actionLoading === 'harvest'}
               className="px-4 py-2 text-xs uppercase transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
-                background: userDaemonData.harvestingDaemon !== '0' && userDaemonData.holdsAngel
+                background: harvestable > 0 && holdsAngel
                   ? 'linear-gradient(135deg, rgba(36, 115, 188, 0.2) 0%, rgba(36, 115, 188, 0.1) 100%)'
                   : 'rgba(36, 115, 188, 0.1)',
                 borderRadius: '4px 8px 10px 6px',
@@ -449,7 +693,7 @@ export default function ProfilePage({ userProfile }: ProfilePageProps) {
                 border: '1px solid rgba(36, 115, 188, 0.3)'
               }}
             >
-              Harvest
+              {actionLoading === 'harvest' ? 'Harvesting...' : 'Harvest'}
             </button>
           </div>
           {showTooltip === 'harvest' && (
@@ -464,14 +708,21 @@ export default function ProfilePage({ userProfile }: ProfilePageProps) {
             >
               <p className="text-xs text-[#2473BC] font-medium mb-1">Harvesting Rewards</p>
               <p className="text-xs text-gray-300 leading-relaxed">
-                {userDaemonData.holdsAngel 
-                  ? `Harvest your purified DAEMON to collect rewards and earn DAEMON Points. You currently have ${userDaemonData.harvestingDaemon} ready to harvest.`
+                {holdsAngel 
+                  ? `Harvest your purified DAEMON to collect rewards and earn DAEMON Points. You currently have ${harvestable} ready to harvest (${consecutiveDays} consecutive days staked).`
                   : 'Harvesting requires an Angel NFT to purify staked DAEMON first. Without purification, tokens remain locked.'}
               </p>
             </div>
           )}
         </div>
       </div>
+
+      {/* Stake Modal */}
+      <StakeModal
+        isOpen={showStakeModal}
+        onClose={() => setShowStakeModal(false)}
+        onStake={handleStake}
+      />
     </div>
   )
 }
