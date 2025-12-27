@@ -369,7 +369,7 @@ export default function Home() {
           name="fc:miniapp" 
           content={JSON.stringify({
             version: 'next',
-            imageUrl: `https://i.imgur.com/oRpCy2Y.jpg`,
+            imageUrl: `https://i.imgur.com/EyfLC4H.png`,
             button: {
               title: 'Open Pocket-Portal',
               action: {
@@ -605,28 +605,32 @@ export default function Home() {
                   onClick={async () => {
                     try {
                       const shareText = "Show me my Daemon! @daemonagent"
-                      // Use Farcaster MiniApp SDK to open share dialog
+                      const miniAppUrl = "https://daemoncast.vercel.app"
+                      // Combine text with mini-app URL to create an embedded share
+                      // When Farcaster sees the URL, it will automatically create a mini-app embed card
+                      const shareContent = `${shareText}\n\n${miniAppUrl}`
+                      
+                      // Use Farcaster MiniApp SDK to open share dialog with embedded mini-app
                       if (sdk.actions?.openUrl) {
-                        // Create a Farcaster share URL
-                        const shareUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}`
+                        // Create a Farcaster share URL with text and URL for embed
+                        const shareUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareContent)}`
                         await sdk.actions.openUrl(shareUrl)
-                      } else if (sdk.actions?.share) {
-                        // Use share action if available
-                        await sdk.actions.share({ text: shareText })
                       } else {
-                        // Fallback: open Warpcast compose URL
-                        window.open(`https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}`, '_blank')
+                        // Fallback: open Warpcast compose URL with text and URL for embed
+                        window.open(`https://warpcast.com/~/compose?text=${encodeURIComponent(shareContent)}`, '_blank')
                       }
                     } catch (error) {
                       console.error('Error sharing:', error)
-                      // Fallback to opening Warpcast
+                      // Fallback to opening Warpcast with embedded mini-app
                       const shareText = "Show me my Daemon! @daemonagent"
-                      window.open(`https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}`, '_blank')
+                      const miniAppUrl = "https://daemoncast.vercel.app"
+                      const shareContent = `${shareText}\n\n${miniAppUrl}`
+                      window.open(`https://warpcast.com/~/compose?text=${encodeURIComponent(shareContent)}`, '_blank')
                     }
                   }}
                   className="mt-2 w-full bg-[#7177FF]/20 hover:bg-[#7177FF]/30 border border-[#7177FF]/40 text-[#7177FF] text-xs font-semibold py-2 px-3 rounded transition-colors"
                 >
-                  📤 Share Command
+                  📤 Launch Daemon Command
                 </button>
               )}
             </div>
