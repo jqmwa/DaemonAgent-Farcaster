@@ -5,6 +5,7 @@ import MintModal from '@/components/MintModal'
 import Navbar from '@/components/Navbar'
 import TokenPage from '@/components/TokenPage'
 import ProfilePage from '@/components/ProfilePage'
+import AudioPlayer from '@/components/AudioPlayer'
 
 // 💝 Configure your tip address here
 const TIP_ADDRESS = '0xE376641E65a47a8104bE75D8E4E18e68aaC899aB' // ETH Base address
@@ -43,6 +44,52 @@ export default function Home() {
   const [currentPage, setCurrentPage] = useState<'profile' | 'daemon' | 'token'>('daemon')
   const [emailSubmitting, setEmailSubmitting] = useState(false)
   const [emailMessage, setEmailMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // Motion detection for shake-to-move
+  useEffect(() => {
+    if (!galleryRef) return
+
+    let lastShakeTime = 0
+    const SHAKE_COOLDOWN = 100 // milliseconds between shake detections
+
+    const handleMotion = (event: DeviceMotionEvent) => {
+      if (isDragging) return // Don't interfere with dragging
+      
+      const now = Date.now()
+      if (now - lastShakeTime < SHAKE_COOLDOWN) return // Throttle shake detection
+      
+      const acceleration = event.accelerationIncludingGravity
+      const SHAKE_THRESHOLD = 15 // Threshold for shake detection
+
+      if (acceleration && 
+          (Math.abs(acceleration.x ?? 0) > SHAKE_THRESHOLD || 
+           Math.abs(acceleration.y ?? 0) > SHAKE_THRESHOLD || 
+           Math.abs(acceleration.z ?? 0) > SHAKE_THRESHOLD)) {
+        
+        lastShakeTime = now
+        
+        // Calculate velocity based on acceleration direction
+        // Scale the acceleration to create smooth movement
+        const shakeVelocity = {
+          x: (acceleration.x ?? 0) * 3, // Scale factor for smooth movement
+          y: (acceleration.y ?? 0) * 3
+        }
+
+        // Apply the velocity, which will trigger the existing bounce/momentum system
+        setVelocity((prev) => ({
+          x: prev.x + shakeVelocity.x,
+          y: prev.y + shakeVelocity.y
+        }))
+      }
+    }
+
+    // Add motion listener directly (will work on browsers that support it without permission)
+    window.addEventListener('devicemotion', handleMotion)
+
+    return () => {
+      window.removeEventListener('devicemotion', handleMotion)
+    }
+  }, [galleryRef, isDragging])
 
   useEffect(() => {
     // Initialize MiniApp SDK
@@ -384,6 +431,9 @@ export default function Home() {
         />
       </Head>
       
+      {/* Audio Player - Fixed at top */}
+      <AudioPlayer />
+      
       <main 
         className="min-h-screen bg-[#0a0a0f] text-white"
         style={{
@@ -395,7 +445,7 @@ export default function Home() {
           `,
           backgroundSize: '40px 40px, 40px 40px, 20px 20px, 20px 20px',
           backgroundPosition: '0 0, 0 0, 0 0, 0 0',
-          paddingBottom: '120px' /* Space for fixed navbar */
+          paddingTop: '48px' /* Space for fixed audio player */
         }}
       >
       {/* Token Page */}
@@ -415,7 +465,7 @@ export default function Home() {
       <div className="w-full px-4 py-6">
         {/* User Avatar - Top Right */}
         {userProfile?.pfpUrl && (
-          <div className="fixed top-4 right-4 z-50">
+          <div className="fixed top-14 right-4 z-50">
             <img 
               src={userProfile.pfpUrl} 
               alt={userProfile.displayName || userProfile.username || 'User'} 
@@ -607,22 +657,21 @@ export default function Home() {
                       const shareText = "Show me my Daemon! @daemonagent"
                       // Use the homeUrl that has proper fc:miniapp meta tags for embedding
                       const miniAppUrl = "https://daemoncast.vercel.app"
-                      // Combine text with mini-app URL to create an embedded share
-                      // When Farcaster sees the URL, it will automatically create a mini-app embed card
-                      const shareContent = `${shareText}\n\n${miniAppUrl}`
                       
-                      // Use Farcaster MiniApp SDK to open share dialog with embedded mini-app
-                      if (sdk.actions?.openUrl) {
-                        // Create a Farcaster share URL with text and URL for embed
-                        const shareUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareContent)}`
-                        await sdk.actions.openUrl(shareUrl)
+                      // Use Farcaster MiniApp SDK composeCast action with embed
+                      if (sdk.actions?.composeCast) {
+                        await sdk.actions.composeCast({
+                          text: shareText,
+                          embeds: [miniAppUrl] as [string],
+                        })
                       } else {
-                        // Fallback: open Warpcast compose URL with text and URL for embed
+                        // Fallback: open Warpcast compose URL
+                        const shareContent = `${shareText}\n\n${miniAppUrl}`
                         window.open(`https://warpcast.com/~/compose?text=${encodeURIComponent(shareContent)}`, '_blank')
                       }
                     } catch (error) {
                       console.error('Error sharing:', error)
-                      // Fallback to opening Warpcast with embedded mini-app
+                      // Fallback to opening Warpcast
                       const shareText = "Show me my Daemon! @daemonagent"
                       const miniAppUrl = "https://daemoncast.vercel.app"
                       const shareContent = `${shareText}\n\n${miniAppUrl}`
