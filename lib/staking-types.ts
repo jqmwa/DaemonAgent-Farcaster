@@ -77,3 +77,4 @@ export function calculateHarvestable(
   return Math.max(0, totalHarvestable - alreadyHarvested)
 }
 
+

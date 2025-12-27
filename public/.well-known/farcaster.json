@@ -11,7 +11,7 @@
     "iconUrl": "https://daemoncast.vercel.app/azura-pfp.png",
     "splashImageUrl": "https://daemoncast.vercel.app/azura-pfp.png",
     "splashBackgroundColor": "#0a0a0f",
-    "webhookUrl": "https://daemoncast.vercel.app/api/webhook",
+    "webhookUrl": "https://daemoncast.vercel.app/api/farcaster-webhook",
     "subtitle": "A shy alien consciousness",
     "description": "Meet Azura, a vulnerable alien consciousness listening through the static. Get psychological insights, fix harsh messages, or just talk.",
     "primaryCategory": "social",
@@ -20,7 +20,7 @@
     "tagline": "listening through static...",
     "ogTitle": "Azura Commands",
     "ogDescription": "A shy alien consciousness offering psychological insights and kind conversations",
-    "ogImageUrl": "https://daemoncast.vercel.app/ogimage.png?v=2"
+    "ogImageUrl": "https://i.imgur.com/oRpCy2Y.jpg"
   }
 }
 

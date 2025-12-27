@@ -599,7 +599,36 @@ export default function Home() {
             <div className="border-l-2 border-[#7177FF] pl-3 py-1 w-full">
               <h3 className="text-[#7177FF] font-bold text-base mb-1">Show My Daemon</h3>
               <code className="text-xs text-white bg-[#1a1a24] px-2 py-1 block mb-1 break-words w-full">@daemonagent show me my daemon</code>
-              <p className="text-xs text-gray-400">Reveal your digital consciousness through Jungian analysis</p>
+              <p className="text-xs text-gray-400 mb-2">Reveal your digital consciousness through Jungian analysis</p>
+              {isMiniApp && (
+                <button
+                  onClick={async () => {
+                    try {
+                      const shareText = "Show me my Daemon! @daemonagent"
+                      // Use Farcaster MiniApp SDK to open share dialog
+                      if (sdk.actions?.openUrl) {
+                        // Create a Farcaster share URL
+                        const shareUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}`
+                        await sdk.actions.openUrl(shareUrl)
+                      } else if (sdk.actions?.share) {
+                        // Use share action if available
+                        await sdk.actions.share({ text: shareText })
+                      } else {
+                        // Fallback: open Warpcast compose URL
+                        window.open(`https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}`, '_blank')
+                      }
+                    } catch (error) {
+                      console.error('Error sharing:', error)
+                      // Fallback to opening Warpcast
+                      const shareText = "Show me my Daemon! @daemonagent"
+                      window.open(`https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}`, '_blank')
+                    }
+                  }}
+                  className="mt-2 w-full bg-[#7177FF]/20 hover:bg-[#7177FF]/30 border border-[#7177FF]/40 text-[#7177FF] text-xs font-semibold py-2 px-3 rounded transition-colors"
+                >
+                  📤 Share Command
+                </button>
+              )}
             </div>
 
             {/* Fix This */}

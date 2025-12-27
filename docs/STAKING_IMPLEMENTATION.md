@@ -265,3 +265,4 @@ curl -X POST http://localhost:3000/api/staking/harvest \
 5. **Set up database** for persistent storage
 6. **Add transaction verification** (verify on-chain staking transactions)
 
+
