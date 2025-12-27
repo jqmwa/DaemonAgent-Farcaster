@@ -369,9 +369,9 @@ export default function Home() {
           name="fc:miniapp" 
           content={JSON.stringify({
             version: 'next',
-            imageUrl: `${URL}/ogimage.png?v=${OG_IMAGE_VERSION}`,
+            imageUrl: `https://i.imgur.com/oRpCy2Y.jpg`,
             button: {
-              title: 'View Commands',
+              title: 'Open Pocket-Portal',
               action: {
                 type: 'launch_miniapp',
                 name: 'Azura Commands',
