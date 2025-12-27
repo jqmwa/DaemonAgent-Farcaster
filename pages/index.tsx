@@ -60,12 +60,13 @@ export default function Home() {
       // Use gravity to determine tilt direction (inverted for natural feel)
       // Acceleration includes gravity, so tilting the phone changes the x/y values
       // Scale the tilt to create smooth, ice-like movement
-      const TILT_SENSITIVITY = 0.8 // Adjust this to control how responsive the tilt is
+      const TILT_SENSITIVITY = 2.0 // Increased speed for faster movement
       
       // Invert x so tilting right moves the element right (natural feel)
+      // Invert y so tilting up moves the element down (flipped vertical)
       const tiltVelocity = {
         x: -(acceleration.x ?? 0) * TILT_SENSITIVITY,
-        y: (acceleration.y ?? 0) * TILT_SENSITIVITY
+        y: -(acceleration.y ?? 0) * TILT_SENSITIVITY
       }
 
       // Apply the velocity continuously based on tilt, which will trigger the existing bounce/momentum system
