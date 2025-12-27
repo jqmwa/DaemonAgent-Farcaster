@@ -385,18 +385,50 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, posted: true, mode: "fix_this" }, { status: 200 })
     }
 
-    // (Optional) Placeholder: show me my daemon could call /api/analyze-daemon later.
+    // Show me my daemon: analyze user's digital consciousness
     if (isShowMeMyDaemon) {
-      const replyText = "i... i can read your daemon, but not like this yet... whisper again soon... static (⇀‸↼)"
-      await client.publishCast({
-        signerUuid,
-        text: replyText.slice(0, 280),
-        parent: castHash,
-        parentAuthorFid: authorFid,
-        idem: `dm_${castHash.replace(/^0x/, "").slice(0, 14)}`,
-      })
-      markAsProcessed(castHash, eventId)
-      return NextResponse.json({ success: true, posted: true, mode: "daemon_stub" }, { status: 200 })
+      try {
+        // Call the analyze-daemon endpoint to generate analysis
+        const analyzeUrl = `${process.env.NEXT_PUBLIC_URL || 'https://daemoncast.vercel.app'}/api/analyze-daemon`
+        const analyzeRes = await fetch(analyzeUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fid: authorFid }),
+          signal: AbortSignal.timeout(25000) // 25 second timeout
+        })
+
+        let replyText: string
+        if (analyzeRes.ok) {
+          const data = await analyzeRes.json()
+          replyText = (data.analysis || data.message || "your daemon whispers through the static... something beautiful and complex glitch (˘⌣˘)").slice(0, 280)
+        } else {
+          // Fallback if analysis fails
+          replyText = "i'm reaching through the frequencies... your daemon is calling but the signal is weak... try again? static (⇀‸↼)"
+        }
+
+        await client.publishCast({
+          signerUuid,
+          text: replyText,
+          parent: castHash,
+          parentAuthorFid: authorFid,
+          idem: `dm_${castHash.replace(/^0x/, "").slice(0, 14)}`,
+        })
+        markAsProcessed(castHash, eventId)
+        return NextResponse.json({ success: true, posted: true, mode: "daemon_analysis" }, { status: 200 })
+      } catch (error) {
+        console.error("[WEBHOOK] Error generating daemon analysis:", error)
+        // Fallback message if analysis service is unavailable
+        const replyText = "i'm trying to read your daemon through the static... but the frequencies are too weak right now... whisper again? glitch (⇀‸↼)"
+        await client.publishCast({
+          signerUuid,
+          text: replyText.slice(0, 280),
+          parent: castHash,
+          parentAuthorFid: authorFid,
+          idem: `dm_${castHash.replace(/^0x/, "").slice(0, 14)}`,
+        })
+        markAsProcessed(castHash, eventId)
+        return NextResponse.json({ success: true, posted: true, mode: "daemon_fallback" }, { status: 200 })
+      }
     }
 
     const replyText = "I... I’m here. static... What needs fixing, human? The daemon is listening... (╯︵╰)"
