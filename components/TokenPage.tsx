@@ -25,20 +25,29 @@ export default function TokenPage() {
   const handleSwap = async () => {
     try {
       if (isMiniApp) {
-        // Use Farcaster's native swap feature through Warpcast
-        // Warpcast is Farcaster's native client with built-in swap
-        const swapUrl = `https://warpcast.com/~/swap?token=${DAEMON_CONTRACT}&chainId=${BASE_CHAIN_ID}`
-        await sdk.actions.openUrl(swapUrl)
+        // Use Farcaster's native swapToken action
+        // CAIP-19 format: eip155:chainId/erc20:contractAddress or eip155:chainId/native
+        const sellToken = `eip155:${BASE_CHAIN_ID}/native` // Base ETH
+        const buyToken = `eip155:${BASE_CHAIN_ID}/erc20:${DAEMON_CONTRACT}` // DAEMON token
+        
+        const result = await sdk.actions.swapToken({
+          sellToken,
+          buyToken,
+          // sellAmount is optional - let user specify in the swap form
+        })
+
+        if (result.success) {
+          console.log('Swap successful:', result.swap.transactions)
+        } else {
+          console.log('Swap cancelled or failed:', result.reason, result.error)
+        }
       } else {
-        // Fallback: open in browser with Farcaster's native swap interface
-        const swapUrl = `https://warpcast.com/~/swap?token=${DAEMON_CONTRACT}&chainId=${BASE_CHAIN_ID}`
-        window.open(swapUrl, '_blank', 'noopener,noreferrer')
+        // Fallback: show message that swap is only available in Farcaster app
+        alert('Swap is only available in the Farcaster app. Please open this page in Warpcast or Farcaster.')
       }
     } catch (error) {
       console.error('Error opening swap:', error)
-      // Final fallback: use Farcaster's native swap URL
-      const swapUrl = `https://warpcast.com/~/swap?token=${DAEMON_CONTRACT}&chainId=${BASE_CHAIN_ID}`
-      window.open(swapUrl, '_blank', 'noopener,noreferrer')
+      alert('Failed to open swap. Please ensure you are using the Farcaster app.')
     }
   }
 
