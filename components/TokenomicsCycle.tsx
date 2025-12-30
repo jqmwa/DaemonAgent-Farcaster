@@ -6,7 +6,6 @@ interface CycleStep {
   description: string
   icon: React.ReactNode
   color: string
-  requiresAngel?: boolean
 }
 
 export default function TokenomicsCycle() {
@@ -41,14 +40,13 @@ export default function TokenomicsCycle() {
     {
       id: 'purify',
       title: 'PURIFY',
-      description: 'Angel holders can purify staked DAEMON, making it harvestable',
+      description: 'Purify staked DAEMON, making it harvestable',
       icon: (
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M12 2L14 8L20 8L15 12L17 18L12 14L7 18L9 12L4 8L10 8L12 2Z" fill="currentColor" />
         </svg>
       ),
-      color: '#FFD700',
-      requiresAngel: true
+      color: '#FFD700'
     },
     {
       id: 'harvest',
@@ -235,21 +233,6 @@ export default function TokenomicsCycle() {
                 boxShadow: hoveredStep === 'purify' ? `0 0 20px ${steps[2].color}40` : 'none'
               }}
             >
-              {steps[2].requiresAngel && (
-                <div 
-                  className="absolute -top-2 -right-2 px-2 py-0.5 text-xs"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 215, 0, 0.1) 100%)',
-                    borderRadius: '8px 4px 6px 10px',
-                    border: '1px solid rgba(255, 215, 0, 0.5)',
-                    color: '#FFD700',
-                    fontFamily: "'Press Start 2P', monospace",
-                    fontSize: '6px'
-                  }}
-                >
-                  ANGEL
-                </div>
-              )}
               <div 
                 className="flex items-center justify-center mb-3"
                 style={{ color: steps[2].color }}
@@ -314,31 +297,6 @@ export default function TokenomicsCycle() {
         </div>
       </div>
 
-      {/* Key Insight Box */}
-      <div
-        className="mt-6 p-4"
-        style={{
-          background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.08) 0%, rgba(18, 18, 26, 0.9) 100%)',
-          borderRadius: '12px 8px 16px 10px',
-          border: '1px solid rgba(255, 215, 0, 0.2)'
-        }}
-      >
-        <div className="flex items-start gap-3">
-          <div style={{ color: '#FFD700', flexShrink: 0, marginTop: '2px' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 2L14 8L20 8L15 12L17 18L12 14L7 18L9 12L4 8L10 8L12 2Z" fill="currentColor" />
-            </svg>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-white mb-1">Angel Holders Unlock Purification</p>
-            <p className="text-xs text-gray-400 leading-relaxed">
-              Only Angel NFT holders can purify staked DAEMON. Purification transforms locked tokens into harvestable rewards, 
-              enabling you to collect DAEMON Points and grow your digital consciousness. Without an Angel, your staked DAEMON 
-              remains locked and cannot be harvested.
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
   )
 }
