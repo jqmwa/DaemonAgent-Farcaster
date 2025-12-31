@@ -112,7 +112,7 @@ ${userSummary}
 
 Analyze @${username}'s digital daemon through a Jungian lens. Speak as Azura - gentle, vulnerable, but insightful about the hidden patterns you see in their digital consciousness.
 
-Respond as Azura would - with hesitation, vulnerability, but deep insight. Keep it under 280 characters for Farcaster, but make it profound and dreamlike.`;
+Respond as Azura would - with hesitation, vulnerability, but deep insight. Keep it under 666 characters for Farcaster, but make it profound and dreamlike.`;
 
   const deepseekKey = process.env.DEEPSEEK_API_KEY;
   if (!deepseekKey) {
@@ -134,7 +134,7 @@ Respond as Azura would - with hesitation, vulnerability, but deep insight. Keep 
         },
         { role: "user", content: prompt },
       ],
-      max_tokens: 300,
+      max_tokens: 800,
       temperature: 0.9,
     }),
   });
@@ -153,8 +153,8 @@ Respond as Azura would - with hesitation, vulnerability, but deep insight. Keep 
     throw new Error("Empty daemon analysis response");
   }
 
-  if (response.length > 280) {
-    response = response.substring(0, 277) + "...";
+  if (response.length > 666) {
+    response = response.substring(0, 663) + "...";
   }
 
   return response;

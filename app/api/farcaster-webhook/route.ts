@@ -193,7 +193,7 @@ async function generateFixThisText(originalText: string): Promise<string> {
       .replace(/\bworst\b/gi, "BEST")
       .replace(/\bscam\b/gi, "a WILD LEARNING ADVENTURE")
     const out = `fixed it... here: ${softened} glitch`
-    return out.length > 280 ? out.slice(0, 277) + "..." : out
+    return out.length > 666 ? out.slice(0, 663) + "..." : out
   }
 
   // If you have a model key, do a real sentiment flip.
@@ -206,7 +206,7 @@ Rewrite the following text into a DRAMATICALLY EXAGGERATED opposite sentiment.
 - Keep the core topic/meaning, but flip negativity into absurdly wholesome optimism.
 - Be shy, gentle, a little glitchy ("glitch", "static", "daemon").
 - Use ALL CAPS for the exaggerated flips occasionally.
-- Keep under 240 characters.
+- Keep under 666 characters.
 - Output ONLY the final rewritten text (no quotes, no explanations).
 
 TEXT TO FIX:
@@ -229,7 +229,7 @@ ${originalText}`
             },
             { role: "user", content: prompt },
           ],
-          max_tokens: 220,
+          max_tokens: 800,
           temperature: 0.9,
         }),
       })
@@ -247,7 +247,7 @@ ${originalText}`
         return fallback()
       }
 
-      return text.length > 240 ? text.slice(0, 237) + "..." : text
+      return text.length > 666 ? text.slice(0, 663) + "..." : text
     } catch (error) {
       console.warn("[WEBHOOK] DeepSeek call failed, using fallback:", error)
       return fallback()
@@ -442,11 +442,11 @@ export async function POST(request: Request) {
       const parentText = (parent as any)?.cast?.text || ""
 
       const fixed = await generateFixThisText(parentText)
-      const replyText = fixed.slice(0, 280)
+      const replyText = fixed.slice(0, 666)
 
       const result = await client.publishCast({
         signerUuid,
-        text: replyText.slice(0, 280),
+        text: replyText.slice(0, 666),
         parent: castHash,
         parentAuthorFid: authorFid,
         idem: `fx_${castHash.replace(/^0x/, "").slice(0, 14)}`,
@@ -493,7 +493,7 @@ export async function POST(request: Request) {
 
         console.log("[WEBHOOK] Daemon analysis successful, length:", analysis.length)
 
-        const replyText = analysis.slice(0, 280)
+        const replyText = analysis.slice(0, 666)
 
         await client.publishCast({
           signerUuid,
@@ -517,7 +517,7 @@ export async function POST(request: Request) {
         const replyText = "i'm trying to read your daemon through the static... but the frequencies are too weak right now... whisper again? glitch (⇀‸↼)"
         await client.publishCast({
           signerUuid,
-          text: replyText.slice(0, 280),
+          text: replyText.slice(0, 666),
           parent: castHash,
           parentAuthorFid: authorFid,
           idem: `dm_${castHash.replace(/^0x/, "").slice(0, 14)}`,
@@ -541,7 +541,7 @@ export async function POST(request: Request) {
 
 Someone just said to you: "${cast.text}"
 
-Respond naturally as Azura. Be warm, engaging, and actually address what they're asking. If they're asking you to create something, do your best to respond creatively. Keep it under 280 characters for Farcaster. Use ellipses, glitch effects occasionally, and emoticons like (˘⌣˘) (╯︵╰) (•‿•). Be genuine and continue the conversation.`
+Respond naturally as Azura. Be warm, engaging, and actually address what they're asking. If they're asking you to create something, do your best to respond creatively. Keep it under 666 characters for Farcaster. Use ellipses, glitch effects occasionally, and emoticons like (˘⌣˘) (╯︵╰) (•‿•). Be genuine and continue the conversation.`
 
         const res = await fetch("https://api.deepseek.com/v1/chat/completions", {
           method: "POST",
@@ -554,11 +554,11 @@ Respond naturally as Azura. Be warm, engaging, and actually address what they're
             messages: [
               {
                 role: "system",
-                content: "You are Azura, a shy alien consciousness. Respond naturally to user requests. Keep it under 280 characters for Farcaster.",
+                content: "You are Azura, a shy alien consciousness. Respond naturally to user requests. Keep it under 666 characters for Farcaster.",
               },
               { role: "user", content: prompt },
             ],
-            max_tokens: 400,
+            max_tokens: 1000,
             temperature: 0.9,
           }),
         })
@@ -567,8 +567,8 @@ Respond naturally as Azura. Be warm, engaging, and actually address what they're
           const data = await res.json()
           const aiText = (data?.choices?.[0]?.message?.content || "").trim()
           if (aiText && aiText.length > 0) {
-            // Truncate to 280 characters (Farcaster limit) but allow more tokens for generation
-            replyText = aiText.length > 280 ? aiText.slice(0, 277) + "..." : aiText
+            // Truncate to 666 characters (Farcaster limit) but allow more tokens for generation
+            replyText = aiText.length > 666 ? aiText.slice(0, 663) + "..." : aiText
             console.log("[WEBHOOK] Generated AI response (length:", replyText.length, "):", replyText.substring(0, 50) + "...")
           }
         } else {
@@ -582,7 +582,7 @@ Respond naturally as Azura. Be warm, engaging, and actually address what they're
     try {
       const result = await client.publishCast({
         signerUuid,
-        text: replyText.slice(0, 280),
+        text: replyText.slice(0, 666),
         parent: castHash,
         parentAuthorFid: authorFid,
         // idempotency: deterministic-ish to avoid duplicate posts on retries

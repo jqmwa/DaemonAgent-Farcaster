@@ -103,7 +103,7 @@ async function generateFixThisText(originalText: string): Promise<string> {
       .replace(/\bworst\b/gi, "BEST")
       .replace(/\bscam\b/gi, "a WILD LEARNING ADVENTURE")
     const out = `fixed it... here: ${softened} glitch`
-    return out.length > 280 ? out.slice(0, 277) + "..." : out
+    return out.length > 666 ? out.slice(0, 663) + "..." : out
   }
 
   const deepseekKey = process.env.DEEPSEEK_API_KEY
@@ -116,7 +116,7 @@ Rewrite the following text into a DRAMATICALLY EXAGGERATED opposite sentiment.
 - Keep the core topic/meaning, but flip negativity into absurdly wholesome optimism.
 - Be shy, gentle, a little glitchy ("glitch", "static", "daemon").
 - Use ALL CAPS for the exaggerated flips occasionally.
-- Keep under 240 characters.
+- Keep under 666 characters.
 - Output ONLY the final rewritten text (no quotes, no explanations).
 
 TEXT TO FIX:
@@ -139,7 +139,7 @@ ${originalText}`
           },
           { role: "user", content: prompt },
         ],
-        max_tokens: 220,
+        max_tokens: 800,
         temperature: 0.9,
       }),
     })
@@ -148,7 +148,7 @@ ${originalText}`
     const data = await res.json()
     const text = (data?.choices?.[0]?.message?.content || "").trim()
     if (!text) return fallback()
-    return text.length > 240 ? text.slice(0, 237) + "..." : text
+    return text.length > 666 ? text.slice(0, 663) + "..." : text
   } catch {
     return fallback()
   }
@@ -325,7 +325,7 @@ async function main() {
 
         const posted = await client.publishCast({
           signerUuid,
-          text: analysis.slice(0, 280),
+          text: analysis.slice(0, 666),
           parent: castHash,
           parentAuthorFid: authorFid,
           idem: `dm_${idemBase}`,
@@ -383,7 +383,7 @@ async function main() {
         try {
           const posted = await client.publishCast({
             signerUuid,
-            text: msg.slice(0, 280),
+            text: msg.slice(0, 666),
             parent: castHash,
             parentAuthorFid: authorFid,
             idem: `fxnp_${idemBase}`,
@@ -433,7 +433,7 @@ async function main() {
 
         const posted = await client.publishCast({
           signerUuid,
-          text: replyText.slice(0, 280),
+          text: replyText.slice(0, 666),
           parent: castHash,
           parentAuthorFid: authorFid,
           idem: `fx_${idemBase}`,

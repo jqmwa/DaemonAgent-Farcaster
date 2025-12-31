@@ -40,7 +40,7 @@ async function likeCast(castHash: string, signerUuid: string, apiKey: string): P
  * POST /api/manual-reply
  * Body:
  *  - castHash: string (required) - The hash of the cast to reply to
- *  - text: string (required) - The reply text (max 280 chars)
+ *  - text: string (required) - The reply text (max 666 chars)
  *  - like?: boolean (default true) - Whether to like the cast
  */
 export async function POST(request: Request) {
@@ -77,9 +77,9 @@ export async function POST(request: Request) {
       )
     }
 
-    if (replyText.length > 280) {
+    if (replyText.length > 666) {
       return NextResponse.json(
-        { success: false, error: "Reply text exceeds 280 characters" },
+        { success: false, error: "Reply text exceeds 666 characters" },
         { status: 400 }
       )
     }
@@ -102,7 +102,7 @@ export async function POST(request: Request) {
     // Post the reply
     const result = await client.publishCast({
       signerUuid,
-      text: replyText.slice(0, 280),
+      text: replyText.slice(0, 666),
       parent: castHash,
       parentAuthorFid: authorFid,
       idem: `mr_${castHash.replace(/^0x/, "").slice(0, 14)}_${Date.now()}`,
