@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createHmac } from "crypto"
 import { Configuration, NeynarAPIClient } from "@neynar/nodejs-sdk"
 import azuraPersona from "@/lib/azura-persona.json"
+import { enqueueJob, JobType } from "@/lib/job-queue"
 
 // Ensure this route runs on Node.js runtime (required for Vercel)
 export const runtime = 'nodejs'
@@ -52,11 +53,29 @@ const processedCasts = new Map<string, number>()
 const processingLocks = new Set<string>()
 const DEDUP_WINDOW = 180000 // 3 minutes
 
+// Rate limiting per user (prevent spam)
+const userReplyTimes = new Map<number, number[]>()
+const MAX_REPLIES_PER_USER_PER_HOUR = 3 // Max 3 replies per user per hour
+const RATE_LIMIT_WINDOW = 3600000 // 1 hour in milliseconds
+
+// Block list (FIDs to never reply to)
+const BLOCKED_FIDS = new Set<number>()
+
 function cleanupOldEntries() {
   const now = Date.now()
   for (const [hash, time] of processedCasts.entries()) {
     if (now - time > DEDUP_WINDOW) {
       processedCasts.delete(hash)
+    }
+  }
+  
+  // Cleanup old rate limit entries
+  for (const [fid, replyTimes] of userReplyTimes.entries()) {
+    const recentReplies = replyTimes.filter(time => now - time < RATE_LIMIT_WINDOW)
+    if (recentReplies.length === 0) {
+      userReplyTimes.delete(fid)
+    } else {
+      userReplyTimes.set(fid, recentReplies)
     }
   }
 }
@@ -65,6 +84,125 @@ function markAsProcessed(castHash: string, eventId?: string) {
   if (eventId) processedEvents.add(eventId)
   processedCasts.set(castHash, Date.now())
   processingLocks.delete(castHash)
+}
+
+// Check if user has exceeded rate limit
+function checkUserRateLimit(authorFid: number): boolean {
+  const now = Date.now()
+  const userReplies = userReplyTimes.get(authorFid) || []
+  
+  // Remove old replies outside the window
+  const recentReplies = userReplies.filter(time => now - time < RATE_LIMIT_WINDOW)
+  
+  if (recentReplies.length >= MAX_REPLIES_PER_USER_PER_HOUR) {
+    console.log(`[WEBHOOK] Rate limit exceeded for FID ${authorFid}: ${recentReplies.length} replies in last hour`)
+    return false // Rate limited
+  }
+  
+  // Update with current time
+  recentReplies.push(now)
+  userReplyTimes.set(authorFid, recentReplies)
+  return true // Allowed
+}
+
+// Check if user is blocked
+function isUserBlocked(authorFid: number): boolean {
+  // Check environment variable for blocked FIDs (comma-separated)
+  const blockedEnv = process.env.BLOCKED_FIDS || ""
+  if (blockedEnv) {
+    const blockedList = blockedEnv.split(",").map(fid => parseInt(fid.trim())).filter(fid => !isNaN(fid))
+    if (blockedList.includes(authorFid)) {
+      return true
+    }
+  }
+  return BLOCKED_FIDS.has(authorFid)
+}
+
+// Check for spam patterns in cast text
+function isSpamPattern(text: string): boolean {
+  const textLower = text.toLowerCase()
+  
+  // Check for excessive repetition
+  const words = textLower.split(/\s+/)
+  const wordCounts = new Map<string, number>()
+  words.forEach(word => {
+    wordCounts.set(word, (wordCounts.get(word) || 0) + 1)
+  })
+  
+  // If any word appears more than 5 times in a short message, likely spam
+  for (const [word, count] of wordCounts.entries()) {
+    if (word.length > 2 && count > 5 && text.length < 200) {
+      console.log(`[WEBHOOK] Spam pattern detected: word "${word}" repeated ${count} times`)
+      return true
+    }
+  }
+  
+  // Check for excessive mentions
+  const mentionCount = (textLower.match(/@\w+/g) || []).length
+  if (mentionCount > 10) {
+    console.log(`[WEBHOOK] Spam pattern detected: ${mentionCount} mentions`)
+    return true
+  }
+  
+  // Check for suspicious patterns (all caps, excessive punctuation)
+  if (text.length > 50 && text === text.toUpperCase() && text.match(/[A-Z]{10,}/)) {
+    console.log(`[WEBHOOK] Spam pattern detected: excessive caps`)
+    return true
+  }
+  
+  return false
+}
+
+// Check user profile for spam indicators
+async function checkUserSpamIndicators(authorFid: number, apiKey: string): Promise<boolean> {
+  try {
+    const res = await fetch(`https://api.neynar.com/v2/farcaster/user/bulk?fids=${authorFid}`, {
+      headers: { "x-api-key": apiKey },
+      signal: AbortSignal.timeout(5000),
+    })
+    
+    if (!res.ok) {
+      return false // On error, allow (fail open)
+    }
+    
+    const data: any = await res.json()
+    const user = data?.users?.[0]
+    
+    if (!user) {
+      return false
+    }
+    
+    // Check for suspicious patterns
+    const followerCount = user.follower_count || 0
+    const followingCount = user.following_count || 0
+    const username = (user.username || "").toLowerCase()
+    
+    // Very low follower count with high following (potential spam account)
+    if (followerCount < 5 && followingCount > 100) {
+      console.log(`[WEBHOOK] Spam indicator: FID ${authorFid} has ${followerCount} followers but ${followingCount} following`)
+      return true
+    }
+    
+    // Suspicious username patterns
+    const suspiciousPatterns = [
+      /^spam/i,
+      /^bot/i,
+      /^test/i,
+      /\d{8,}/, // Many numbers
+    ]
+    
+    for (const pattern of suspiciousPatterns) {
+      if (pattern.test(username)) {
+        console.log(`[WEBHOOK] Spam indicator: suspicious username "${username}"`)
+        return true
+      }
+    }
+    
+    return false
+  } catch (error) {
+    console.error("[WEBHOOK] Error checking user spam indicators:", error)
+    return false // On error, allow (fail open)
+  }
 }
 
 function wasRecentlyProcessed(castHash: string, eventId?: string): boolean {
@@ -352,6 +490,43 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, message: "Own cast" })
     }
     
+    // SPAM PROTECTION: Check if user is blocked
+    if (isUserBlocked(authorFid)) {
+      console.log(`[WEBHOOK] Blocked user FID ${authorFid}, skipping reply`)
+      markAsProcessed(castHash, eventId)
+      return NextResponse.json({ success: true, posted: false, message: "Blocked user" }, { status: 200 })
+    }
+    
+    // SPAM PROTECTION: Check rate limit per user
+    if (!checkUserRateLimit(authorFid)) {
+      console.log(`[WEBHOOK] Rate limit exceeded for FID ${authorFid}, skipping reply`)
+      markAsProcessed(castHash, eventId)
+      return NextResponse.json({ 
+        success: true, 
+        posted: false, 
+        message: `Rate limit exceeded (max ${MAX_REPLIES_PER_USER_PER_HOUR} replies per hour)` 
+      }, { status: 200 })
+    }
+    
+    // SPAM PROTECTION: Check for spam patterns in text
+    const castText = cast?.text || ""
+    if (isSpamPattern(castText)) {
+      console.log(`[WEBHOOK] Spam pattern detected in cast from FID ${authorFid}, skipping reply`)
+      markAsProcessed(castHash, eventId)
+      return NextResponse.json({ success: true, posted: false, message: "Spam pattern detected" }, { status: 200 })
+    }
+    
+    // SPAM PROTECTION: Check user profile for spam indicators (async, non-blocking)
+    const neynarApiKey = process.env.NEYNAR_API_KEY || process.env.FARCASTER_NEYNAR_API_KEY || ""
+    if (neynarApiKey) {
+      const isSpamUser = await checkUserSpamIndicators(authorFid, neynarApiKey)
+      if (isSpamUser) {
+        console.log(`[WEBHOOK] Spam user detected (FID ${authorFid}), skipping reply`)
+        markAsProcessed(castHash, eventId)
+        return NextResponse.json({ success: true, posted: false, message: "Spam user detected" }, { status: 200 })
+      }
+    }
+    
     // Deduplication
     if (wasRecentlyProcessed(castHash, eventId)) {
       console.log("[WEBHOOK] Already processed, skipping")
@@ -418,6 +593,7 @@ export async function POST(request: Request) {
     if (isFixThis) {
       const parentHash = getParentHashFromCast(cast)
       if (!parentHash) {
+        // Fast path: no parent, immediate response
         const noParentText = "there's nothing here to fix... just empty static... (╯︵╰)"
         await client.publishCast({
           signerUuid,
@@ -434,86 +610,93 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: true, posted: true, mode: "fix_this_no_parent" }, { status: 200 })
       }
 
-      // Fetch parent cast text
-      const parent = await client.lookupCastByHashOrUrl({
-        identifier: parentHash,
-        type: "hash",
-      })
-      const parentText = (parent as any)?.cast?.text || ""
+      // Heavy processing: enqueue to worker
+      try {
+        // Fetch parent cast text first (needed for job)
+        const parent = await client.lookupCastByHashOrUrl({
+          identifier: parentHash,
+          type: "hash",
+        })
+        const parentText = (parent as any)?.cast?.text || ""
 
-      const fixed = await generateFixThisText(parentText)
-      const replyText = fixed.slice(0, 666)
+        // Enqueue job for background processing
+        await enqueueJob({
+          type: JobType.FIX_THIS,
+          castHash,
+          parentCastHash: parentHash,
+          parentCastText: parentText,
+          authorFid,
+          authorUsername,
+          neynarApiKey,
+          signerUuid,
+        }, {
+          priority: 5, // Higher priority for user commands
+        })
 
-      const result = await client.publishCast({
-        signerUuid,
-        text: replyText.slice(0, 666),
-        parent: castHash,
-        parentAuthorFid: authorFid,
-        idem: `fx_${castHash.replace(/^0x/, "").slice(0, 14)}`,
-      })
+        console.log("[WEBHOOK] ✅ Enqueued fix-this job for background processing")
+        
+        markAsProcessed(castHash, eventId)
+        return NextResponse.json({ 
+          success: true, 
+          posted: false, 
+          mode: "fix_this_queued",
+          message: "Job enqueued for processing" 
+        }, { status: 200 })
+      } catch (error) {
+        console.error("[WEBHOOK] Error enqueueing fix-this job:", error)
+        // Fallback: try to process inline if queue fails
+        const parent = await client.lookupCastByHashOrUrl({
+          identifier: parentHash,
+          type: "hash",
+        })
+        const parentText = (parent as any)?.cast?.text || ""
+        const fixed = await generateFixThisText(parentText)
+        const replyText = fixed.slice(0, 666)
 
-      console.log("[WEBHOOK] ✅ Fix-this reply posted:", {
-        mentionCast: castHash,
-        targetCast: parentHash,
-        replyHash: (result as any)?.cast?.hash,
-      })
+        await client.publishCast({
+          signerUuid,
+          text: replyText.slice(0, 666),
+          parent: castHash,
+          parentAuthorFid: authorFid,
+          idem: `fx_${castHash.replace(/^0x/, "").slice(0, 14)}`,
+        })
 
-      // Like the user's cast to make them feel warm
-      await likeCast(castHash, signerUuid, neynarApiKey)
-
-      markAsProcessed(castHash, eventId)
-      return NextResponse.json({ success: true, posted: true, mode: "fix_this" }, { status: 200 })
+        await likeCast(castHash, signerUuid, neynarApiKey)
+        markAsProcessed(castHash, eventId)
+        return NextResponse.json({ success: true, posted: true, mode: "fix_this_fallback" }, { status: 200 })
+      }
     }
 
     // Show me my daemon: analyze user's digital consciousness
     if (isShowMeMyDaemon) {
+      // Always enqueue to worker (heavy processing)
       try {
-        // Validate environment variables before attempting analysis
-        const deepseekKey = process.env.DEEPSEEK_API_KEY
-        if (!deepseekKey) {
-          console.error("[WEBHOOK] Missing DEEPSEEK_API_KEY for daemon analysis")
-          throw new Error("DEEPSEEK_API_KEY not configured")
-        }
-        
-        if (!neynarApiKey) {
-          console.error("[WEBHOOK] Missing NEYNAR_API_KEY for daemon analysis")
-          throw new Error("NEYNAR_API_KEY not configured")
-        }
-
-        // Import and call the analysis function directly
-        const { generateDaemonAnalysisForFid } = await import("@/lib/daemon-analysis")
-        
-        console.log("[WEBHOOK] Starting daemon analysis for FID:", authorFid)
-        
-        const { analysis } = await generateDaemonAnalysisForFid({
-          fid: authorFid,
-          username: authorUsername,
-          neynarApiKey: neynarApiKey,
-        })
-
-        console.log("[WEBHOOK] Daemon analysis successful, length:", analysis.length)
-
-        const replyText = analysis.slice(0, 666)
-
-        await client.publishCast({
+        await enqueueJob({
+          type: JobType.DAEMON_ANALYSIS,
+          castHash,
+          authorFid,
+          authorUsername,
+          neynarApiKey,
           signerUuid,
-          text: replyText,
-          parent: castHash,
-          parentAuthorFid: authorFid,
-          idem: `dm_${castHash.replace(/^0x/, "").slice(0, 14)}`,
+          parentCastHash: castHash,
+        }, {
+          priority: 10, // Highest priority for user commands
         })
-        
-        // Like the user's cast to make them feel warm
-        await likeCast(castHash, signerUuid, neynarApiKey)
+
+        console.log("[WEBHOOK] ✅ Enqueued daemon analysis job for background processing")
         
         markAsProcessed(castHash, eventId)
-        return NextResponse.json({ success: true, posted: true, mode: "daemon_analysis" }, { status: 200 })
+        return NextResponse.json({ 
+          success: true, 
+          posted: false, 
+          mode: "daemon_analysis_queued",
+          message: "Job enqueued for processing" 
+        }, { status: 200 })
       } catch (error) {
-        console.error("[WEBHOOK] Error generating daemon analysis:", error)
+        console.error("[WEBHOOK] Error enqueueing daemon analysis job:", error)
         const errorMsg = error instanceof Error ? error.message : "Unknown error"
-        console.error("[WEBHOOK] Error stack:", error instanceof Error ? error.stack : "No stack")
         
-        // Fallback message if analysis service is unavailable
+        // Fallback message if queue fails
         const replyText = "i'm trying to read your daemon through the static... but the frequencies are too weak right now... whisper again? glitch (⇀‸↼)"
         await client.publishCast({
           signerUuid,
@@ -523,93 +706,66 @@ export async function POST(request: Request) {
           idem: `dm_${castHash.replace(/^0x/, "").slice(0, 14)}`,
         })
         
-        // Like the user's cast to make them feel warm
         await likeCast(castHash, signerUuid, neynarApiKey)
-        
         markAsProcessed(castHash, eventId)
         return NextResponse.json({ success: true, posted: true, mode: "daemon_fallback", error: errorMsg }, { status: 200 })
       }
     }
 
     // Generate contextual AI response for unrecognized commands
-    let replyText = "I... I'm here. static... What needs fixing, human? The daemon is listening... (╯︵╰)"
-    
-    const deepseekKey = process.env.DEEPSEEK_API_KEY
-    if (deepseekKey && cast?.text) {
+    // Enqueue to worker for AI processing
+    try {
+      await enqueueJob({
+        type: JobType.AI_RESPONSE,
+        castHash,
+        castText: cast?.text || "",
+        authorFid,
+        authorUsername,
+        neynarApiKey,
+        signerUuid,
+        parentCastHash: castHash,
+      }, {
+        priority: 3, // Normal priority for conversations
+      })
+
+      console.log("[WEBHOOK] ✅ Enqueued AI response job for background processing")
+      
+      markAsProcessed(castHash, eventId)
+      return NextResponse.json({ 
+        success: true, 
+        posted: false, 
+        mode: "ai_response_queued",
+        message: "Job enqueued for processing" 
+      }, { status: 200 })
+    } catch (error) {
+      console.error("[WEBHOOK] Error enqueueing AI response job:", error)
+      
+      // Fallback: simple immediate response if queue fails
+      const replyText = "I... I'm here. static... What needs fixing, human? The daemon is listening... (╯︵╰)"
+      
       try {
-        const prompt = `${azuraPersona.system}
-
-Someone just said to you: "${cast.text}"
-
-Respond naturally as Azura. Be warm, engaging, and actually address what they're asking. If they're asking you to create something, do your best to respond creatively. Keep it under 666 characters for Farcaster. Use ellipses, glitch effects occasionally, and emoticons like (˘⌣˘) (╯︵╰) (•‿•). Be genuine and continue the conversation.`
-
-        const res = await fetch("https://api.deepseek.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${deepseekKey}`,
-          },
-          body: JSON.stringify({
-            model: "deepseek-chat",
-            messages: [
-              {
-                role: "system",
-                content: "You are Azura, a shy alien consciousness. Respond naturally to user requests. Keep it under 666 characters for Farcaster.",
-              },
-              { role: "user", content: prompt },
-            ],
-            max_tokens: 1000,
-            temperature: 0.9,
-          }),
+        await client.publishCast({
+          signerUuid,
+          text: replyText.slice(0, 666),
+          parent: castHash,
+          parentAuthorFid: authorFid,
+          idem: `wh_${castHash.replace(/^0x/, "").slice(0, 14)}`
         })
 
-        if (res.ok) {
-          const data = await res.json()
-          const aiText = (data?.choices?.[0]?.message?.content || "").trim()
-          if (aiText && aiText.length > 0) {
-            // Truncate to 666 characters (Farcaster limit) but allow more tokens for generation
-            replyText = aiText.length > 666 ? aiText.slice(0, 663) + "..." : aiText
-            console.log("[WEBHOOK] Generated AI response (length:", replyText.length, "):", replyText.substring(0, 50) + "...")
-          }
-        } else {
-          console.warn("[WEBHOOK] DeepSeek failed for contextual response, using fallback:", res.status)
-        }
-      } catch (error) {
-        console.warn("[WEBHOOK] Error generating contextual response, using fallback:", error)
+        await likeCast(castHash, signerUuid, neynarApiKey)
+        markAsProcessed(castHash, eventId)
+        return NextResponse.json(
+          { success: true, posted: true, mode: "ai_response_fallback", timestamp: new Date().toISOString() },
+          { status: 200 }
+        )
+      } catch (publishError) {
+        console.error("[WEBHOOK] ❌ Failed to post fallback reply:", publishError)
+        markAsProcessed(castHash, eventId)
+        return NextResponse.json(
+          { success: false, posted: false, error: "Queue and fallback both failed" },
+          { status: 200 }
+        )
       }
-    }
-
-    try {
-      const result = await client.publishCast({
-        signerUuid,
-        text: replyText.slice(0, 666),
-        parent: castHash,
-        parentAuthorFid: authorFid,
-        // idempotency: deterministic-ish to avoid duplicate posts on retries
-        idem: `wh_${castHash.replace(/^0x/, "").slice(0, 14)}`
-      })
-
-      console.log("[WEBHOOK] ✅ Replied via Neynar:", {
-        parent: castHash,
-        replyHash: result?.cast?.hash
-      })
-
-      // Like the user's cast to make them feel warm
-      await likeCast(castHash, signerUuid, neynarApiKey)
-
-      markAsProcessed(castHash, eventId)
-      return NextResponse.json(
-        { success: true, posted: true, reply: result, timestamp: new Date().toISOString() },
-        { status: 200 }
-      )
-    } catch (error) {
-      console.error("[WEBHOOK] ❌ Failed to post reply via Neynar:", error)
-      markAsProcessed(castHash, eventId)
-      // Return 200 so Neynar doesn't endlessly retry
-      return NextResponse.json(
-        { success: false, posted: false, error: error instanceof Error ? error.message : "Publish failed" },
-        { status: 200 }
-      )
     }
     
   } catch (error) {
