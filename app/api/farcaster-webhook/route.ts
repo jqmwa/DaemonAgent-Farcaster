@@ -557,7 +557,6 @@ export async function POST(request: Request) {
     
     // SIMPLE WEBHOOK RESPONSE:
     // Post a minimal reply directly via Neynar SDK (no ElizaOS runtime, no polling loop).
-    const neynarApiKey = process.env.NEYNAR_API_KEY || process.env.FARCASTER_NEYNAR_API_KEY || ""
     const signerUuid = process.env.NEYNAR_SIGNER_UUID || process.env.FARCASTER_SIGNER_UUID || ""
 
     if (!neynarApiKey || !signerUuid) {

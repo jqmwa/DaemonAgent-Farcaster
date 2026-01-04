@@ -1,0 +1,28 @@
+# Dockerfile for ECS Worker
+# Optimized for running background job processors
+
+FROM node:20-alpine AS base
+
+# Install pnpm
+RUN npm install -g pnpm
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json pnpm-lock.yaml ./
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile --prod
+
+# Copy source code
+COPY . .
+
+# Build TypeScript (if needed) - workers use tsx for runtime
+# For production, you might want to compile to JS first
+# RUN pnpm build
+
+# Expose health check port
+EXPOSE 3001
+
+# Run the worker
+CMD ["node", "-r", "tsx/register", "workers/index.ts"]

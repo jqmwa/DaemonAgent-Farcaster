@@ -1,0 +1,80 @@
+{
+  "family": "daemonfetch-worker",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/ecsTaskRole",
+  "containerDefinitions": [
+    {
+      "name": "daemonfetch-worker",
+      "image": "YOUR_ECR_REPO_URI:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 3001,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "NODE_ENV",
+          "value": "production"
+        },
+        {
+          "name": "WORKER_CONCURRENCY",
+          "value": "5"
+        },
+        {
+          "name": "ENABLE_HEALTH_CHECK",
+          "value": "true"
+        },
+        {
+          "name": "HEALTH_CHECK_PORT",
+          "value": "3001"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "REDIS_URL",
+          "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:daemonfetch/redis-url"
+        },
+        {
+          "name": "NEYNAR_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:daemonfetch/neynar-api-key"
+        },
+        {
+          "name": "NEYNAR_SIGNER_UUID",
+          "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:daemonfetch/neynar-signer-uuid"
+        },
+        {
+          "name": "DEEPSEEK_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:daemonfetch/deepseek-api-key"
+        },
+        {
+          "name": "BOT_FID",
+          "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:daemonfetch/bot-fid"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/daemonfetch-worker",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "wget --quiet --tries=1 --spider http://localhost:3001/health || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    }
+  ]
+}
