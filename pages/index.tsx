@@ -370,7 +370,7 @@ export default function Home() {
           name="fc:miniapp" 
           content={JSON.stringify({
             version: 'next',
-            imageUrl: `https://i.imgur.com/EyfLC4H.png`,
+            imageUrl: `${URL}/ogimage.png`,
             button: {
               title: 'Open Pocket-Portal',
               action: {
