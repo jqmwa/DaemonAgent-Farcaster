@@ -5,6 +5,330 @@ import { getFidFromUsername, getWalletAddress } from '@/lib/farcaster-utils'
 import { StakingData } from '@/lib/staking-service'
 import StakeModal from './StakeModal'
 
+const SURVEYS = [
+  {
+    id: "daemon-analysis",
+    title: "Daemon Analysis",
+    description: "Ping your internal guidance system. Mapping the glitched geometry between your conscious will and the shadow-self residing in the substrate.",
+    questions: [
+      {
+        id: 1,
+        text: "When the path forks in the dark, my navigation system:",
+        options: [
+          "Executes immediate visceral override (Gut Trust)",
+          "Runs a full probabilistic simulation (Analysis)",
+          "Pings the local network for data (Counsel)",
+          "Waits for a signal in the static (Clarity)"
+        ]
+      },
+      {
+        id: 2,
+        text: "System Failure / Crisis State detected. I initiate:",
+        options: [
+          "Force-quit and restart (Immediate Action)",
+          "Safe Mode / Diagnostic repair (Inward Retreat)",
+          "Dynamic code rewriting (Fluid Adaptation)",
+          "Firewall hardening (Principle Defense)"
+        ]
+      },
+      {
+        id: 3,
+        text: "My voltage is highest when:",
+        options: [
+          "Rendering new maps of the unknown",
+          "Compiling order from chaos",
+          "Synchronizing with another soul",
+          "Optimizing my own source code"
+        ]
+      },
+      {
+        id: 4,
+        text: "Relationship to the Admin / Architect:",
+        options: [
+          "Verify signatures before accepting updates",
+          "Root access or nothing (Rebellious)",
+          "Smooth integration with the mainframe",
+          "Running on a private server (Indifferent)"
+        ]
+      },
+      {
+        id: 5,
+        text: "During sleep mode, my rendering engine produces:",
+        options: [
+          "High-fidelity hero journeys",
+          "Raw data streams and fractals",
+          "Visceral connection simulations",
+          "Null output / Black screen"
+        ]
+      },
+      {
+        id: 6,
+        text: "The glitch I cannot seem to patch:",
+        options: [
+          "Corrupted rage files (Suppressed Aggression)",
+          "Port vulnerability anxiety (Fear of Intimacy)",
+          "Bandwidth hoarding (Selfishness)",
+          "Legacy code lock-in (Rigidity)"
+        ]
+      },
+      {
+        id: 7,
+        text: "My aesthetic resonance frequency is found in:",
+        options: [
+          "Verticality / The High ISO peaks",
+          "Density / The overgrown dark mode",
+          "Fluidity / The infinite blue screen",
+          "Empty Cache / The vast silence"
+        ]
+      },
+      {
+        id: 8,
+        text: "Runtime performance metrics:",
+        options: [
+          "Overclocked bursts vs. System cooling",
+          "Linear processing stability",
+          "Night-mode optimization",
+          "Stochastic / RNG based"
+        ]
+      },
+      {
+        id: 9,
+        text: "Upon detecting a logic error in the world (Injustice):",
+        options: [
+          "Deploy counter-measures immediately",
+          "System wide error-logging (Emotional pain)",
+          "Analyze root access for a patch",
+          "Acknowledge the bug as a feature of duality"
+        ]
+      },
+      {
+        id: 10,
+        text: "Prime Directive:",
+        options: [
+          "Decrypt the hidden file (Truth)",
+          "Preserve the saved state (Protection)",
+          "Reach Level 99 (Mastery)",
+          "Jailbreak the system (Freedom)"
+        ]
+      }
+    ]
+  },
+  {
+    id: "political-alignment",
+    title: "Political Alignment",
+    description: "Calibrating your vector within the collective dream. How do you harmonize with the Meta-Polis?",
+    questions: [
+      {
+        id: 1,
+        text: "The node vs. The network:",
+        options: [
+          "The node must remain sovereign at all costs",
+          "The network's hum creates the node's meaning",
+          "The hive-mind is the only true organism",
+          "The network exists to power the nodes"
+        ]
+      },
+      {
+        id: 2,
+        text: "Handling legacy data (Tradition):",
+        options: [
+          "Backups are critical for system integrity",
+          "Refactor the code, keep the useful functions",
+          "Deprecate everything / rewrite from scratch",
+          "Use different versions for different environments"
+        ]
+      },
+      {
+        id: 3,
+        text: "Source of Admin privileges:",
+        options: [
+          "High-resolution moral clarity (Virtue)",
+          "Consensus of the connected peers (Democracy)",
+          "Uptime and stability metrics (Results)",
+          "The encryption of basic rights (Liberty)"
+        ]
+      },
+      {
+        id: 4,
+        text: "Bandwidth (Resource) allocation:",
+        options: [
+          "Priority queuing based on throughput (Merit)",
+          "Guaranteed packet delivery for all (Needs)",
+          "Open protocol competition (Market)",
+          "Shared server space (Collective)"
+        ]
+      },
+      {
+        id: 5,
+        text: "When the firewall of Order blocks the port of Freedom:",
+        options: [
+          "Maintain the firewall (Order > Freedom)",
+          "Open the port, risk the virus (Freedom > Order)",
+          "Tunneling protocol (Synthesis)",
+          "Let the users vote on the settings"
+        ]
+      },
+      {
+        id: 6,
+        text: "The Architect's role:",
+        options: [
+          "To code virtue into the user base",
+          "To prevent hardware damage only",
+          "To optimize the social algorithm actively",
+          "To keep the servers running, nothing more"
+        ]
+      },
+      {
+        id: 7,
+        text: "Vertical scaling (Hierarchy) is:",
+        options: [
+          "Necessary architecture for complex apps",
+          "A bug that creates latency",
+          "Acceptable if dynamic and permeable",
+          "A file-system structure, not a value judgment"
+        ]
+      },
+      {
+        id: 8,
+        text: "Version updates (Change) should be:",
+        options: [
+          "Incremental patches (Gradual)",
+          "Hard fork / System wipe (Revolution)",
+          "Optimization of current build (Reform)",
+          "Continuous deployment / A/B testing (Evolution)"
+        ]
+      },
+      {
+        id: 9,
+        text: "The tutorial mode (Education) is for:",
+        options: [
+          "Installing civic drivers",
+          "Enabling independent processing",
+          "Job-class specialization",
+          "Network compatibility protocols"
+        ]
+      },
+      {
+        id: 10,
+        text: "Inter-generational bandwidth:",
+        options: [
+          "Seeders (Elders) demand priority respect",
+          "Peer-to-peer equality",
+          "Leechers (Youth) drive the new meta",
+          "Separate subnets entirely"
+        ]
+      }
+    ]
+  },
+  {
+    id: "archetype",
+    title: "Mystic Archetype",
+    description: "Which story is trying to tell itself through you? Identify the narrative thread woven into your DNA.",
+    questions: [
+      {
+        id: 1,
+        text: "In the Great Simulation, I play:",
+        options: [
+          "The Glitch seeking its origin (Seeker)",
+          "The Firewall protecting the core (Guardian)",
+          "The Virus rewriting the rules (Rebel)",
+          "The Wiki offering cheats/guides (Sage)"
+        ]
+      },
+      {
+        id: 2,
+        text: "In the server lobby (Group Dynamics), I am:",
+        options: [
+          "Rendering future patches (Visionary)",
+          "Moderating the chat (Caretaker)",
+          "Tanking the damage (Warrior)",
+          "Spamming emotes / relieving tension (Jester)"
+        ]
+      },
+      {
+        id: 3,
+        text: "System Error / Fear:",
+        options: [
+          "Infinite loop / Soft-lock (Trapped)",
+          "Data corruption / Entropy (Chaos)",
+          "Connection timeout (Abandonment)",
+          "Zero bitrate (Insignificance)"
+        ]
+      },
+      {
+        id: 4,
+        text: "Encountering a paywall (Obstacle):",
+        options: [
+          "Hack the login (Trickster)",
+          "Brute force the password (Warrior)",
+          "Monetize the problem (Alchemist)",
+          "Play the free demo (Realist)"
+        ]
+      },
+      {
+        id: 5,
+        text: "I recharge by:",
+        options: [
+          "Downloading new DLC (Adventure)",
+          "P2P Encrypted Channels (Intimacy)",
+          "Climbing the leaderboard (Achievement)",
+          "Data mining (Discovery)"
+        ]
+      },
+      {
+        id: 6,
+        text: "The metadata others tag me with:",
+        options: [
+          "High Contrast / Saturation (Intensity)",
+          "99.9% Uptime (Reliability)",
+          "Procedural Generation (Creativity)",
+          "Hardened Kernel (Strength)"
+        ]
+      },
+      {
+        id: 7,
+        text: "Terms of Service (Rules):",
+        options: [
+          "I write the EULA",
+          "I accept but don't read",
+          "I violate TOS for fun",
+          "I understand the code behind the rules"
+        ]
+      },
+      {
+        id: 8,
+        text: "My favorite lore text:",
+        options: [
+          "The Chosen One's save file",
+          "The Exploit found by the underdog",
+          "Two players, one controller",
+          "The Easter Egg hidden in the map"
+        ]
+      },
+      {
+        id: 9,
+        text: "My loot drop for the world:",
+        options: [
+          "Shield buff (Protection)",
+          "Patch update (Innovation)",
+          "High-res texture pack (Beauty)",
+          "Health potion (Healing)"
+        ]
+      },
+      {
+        id: 10,
+        text: "End-game goal:",
+        options: [
+          "Upload to the cloud (Transcendence)",
+          "Link accounts permanently (Belonging)",
+          "Offline mode mastery (Freedom)",
+          "High score on the leaderboard (Legacy)"
+        ]
+      }
+    ]
+  }
+]
+
 interface ProfilePageProps {
   userProfile: {
     displayName?: string
@@ -230,7 +554,7 @@ export default function ProfilePage({ userProfile }: ProfilePageProps) {
   return (
     <div 
       className="w-full px-4 py-6 pb-32"
-      style={{ fontFamily: "'IBM Plex Mono', monospace" }}
+      style={{ fontFamily: "'IBM Plex Mono', monospace", marginTop: '32px' }}
     >
       {/* Header */}
       <h1 
@@ -476,245 +800,83 @@ export default function ProfilePage({ userProfile }: ProfilePageProps) {
 
       {/* Section Header */}
       <h2 
-        className="text-[#7177FF] uppercase tracking-wider mb-6"
+        className="uppercase tracking-wider mb-6"
         style={{ 
           fontFamily: "'Press Start 2P', monospace",
-          fontSize: '12px'
+          fontSize: '12px',
+          color: '#788AFF'
         }}
       >
-        Your DAEMONs
+        Surveys
       </h2>
 
-      {/* Staking Stats */}
+      {/* Survey Quests */}
       <div className="space-y-3">
-        {/* Staked DAEMON */}
-        <div
-          className="p-4 relative"
-          style={{
-            background: 'linear-gradient(135deg, rgba(113, 119, 255, 0.08) 0%, rgba(18, 18, 26, 0.9) 100%)',
-            borderRadius: '14px 8px 12px 18px',
-            border: '1px solid rgba(113, 119, 255, 0.2)'
-          }}
-          onMouseEnter={() => setShowTooltip('stake')}
-          onMouseLeave={() => setShowTooltip(null)}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {/* Lock Icon */}
-              <div
-                className="flex items-center justify-center"
-                style={{
-                  width: '44px',
-                  height: '44px',
-                  borderRadius: '10px 6px 8px 12px',
-                  background: 'rgba(113, 119, 255, 0.15)'
-                }}
-              >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect x="5" y="11" width="14" height="10" rx="2" stroke="#7177FF" strokeWidth="1.5" fill="none" />
-                  <path d="M8 11V7C8 4.79086 9.79086 3 12 3C14.2091 3 16 4.79086 16 7V11" stroke="#7177FF" strokeWidth="1.5" strokeLinecap="round" fill="none" />
-                  <circle cx="12" cy="16" r="1.5" fill="#7177FF" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-gray-500 text-xs uppercase">Staked DAEMON</p>
-                <p className="text-white text-xl font-bold">{formatStakedAmount(stakedAmount)}</p>
-                {consecutiveDays > 0 && (
-                  <p className="text-[#7FFF5B] text-xs mt-1">{consecutiveDays} consecutive day{consecutiveDays !== 1 ? 's' : ''}</p>
-                )}
-                {!holdsAngel && stakedAmount !== '0' && (
-                  <p className="text-gray-500 text-xs mt-1">Locked until purified</p>
-                )}
-              </div>
-            </div>
-            <button
-              onClick={() => setShowStakeModal(true)}
-              disabled={actionLoading === 'stake' || !walletAddress}
-              className="px-4 py-2 text-xs uppercase transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{
-                background: 'linear-gradient(135deg, rgba(113, 119, 255, 0.2) 0%, rgba(113, 119, 255, 0.1) 100%)',
-                borderRadius: '8px 4px 6px 10px',
-                color: '#7177FF',
-                border: '1px solid rgba(113, 119, 255, 0.3)'
-              }}
-            >
-              {actionLoading === 'stake' ? 'Staking...' : 'Stake'}
-            </button>
-          </div>
-          {showTooltip === 'stake' && (
-            <div
-              className="absolute top-full left-0 right-0 mt-2 p-3 z-50"
-              style={{
-                background: 'rgba(18, 18, 26, 0.98)',
-                borderRadius: '8px 12px 10px 6px',
-                border: '1px solid rgba(113, 119, 255, 0.3)',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
-              }}
-            >
-              <p className="text-xs text-[#7177FF] font-medium mb-1">Staking Explained</p>
-              <p className="text-xs text-gray-300 leading-relaxed">
-                Staking locks your $DAEMON tokens to earn passive rewards. Each consecutive day staked = 1 purified daemon (if you have an Angel). 
-                Unstaking resets your streak.
-              </p>
-            </div>
-          )}
-        </div>
+        {SURVEYS.map((survey, index) => {
+          const borderRadiusStyles = [
+            '14px 8px 12px 18px',
+            '18px 12px 8px 14px',
+            '8px 14px 18px 12px'
+          ]
+          const iconBorderRadiusStyles = [
+            '10px 6px 8px 12px',
+            '12px 8px 6px 10px',
+            '6px 10px 12px 8px'
+          ]
+          const buttonBorderRadiusStyles = [
+            '8px 4px 6px 10px',
+            '10px 6px 4px 8px',
+            '4px 8px 10px 6px'
+          ]
 
-        {/* Purified DAEMONs - Show connection to harvesting */}
-        {holdsAngel && purifiedDaemons > 0 && (
-          <div
-            className="p-4 relative"
-            style={{
-              background: 'linear-gradient(135deg, rgba(239, 47, 127, 0.08) 0%, rgba(18, 18, 26, 0.9) 100%)',
-              borderRadius: '18px 12px 8px 14px',
-              border: '2px solid rgba(239, 47, 127, 0.3)'
-            }}
-            onMouseEnter={() => setShowTooltip('purify')}
-            onMouseLeave={() => setShowTooltip(null)}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {/* Purified Icon */}
-                <div
-                  className="flex items-center justify-center"
+          return (
+            <div
+              key={survey.id}
+              className="p-4 relative"
+              style={{
+                background: 'linear-gradient(135deg, rgba(120, 138, 255, 0.08) 0%, rgba(18, 18, 26, 0.9) 100%)',
+                borderRadius: borderRadiusStyles[index],
+                border: '1px solid rgba(120, 138, 255, 0.2)'
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  {/* Survey Icon */}
+                  <div
+                    className="flex items-center justify-center flex-shrink-0"
+                    style={{
+                      width: '44px',
+                      height: '44px',
+                      borderRadius: iconBorderRadiusStyles[index],
+                      background: 'rgba(120, 138, 255, 0.15)'
+                    }}
+                  >
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M9 11L12 14L22 4" stroke="#788AFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M21 12V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H16" stroke="#788AFF" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-base font-bold truncate">{survey.title}</p>
+                    <p className="text-gray-500 text-xs mt-1 line-clamp-2">{survey.description}</p>
+                    <p className="text-gray-400 text-xs mt-1">{survey.questions.length} questions</p>
+                  </div>
+                </div>
+                <button
+                  className="px-4 py-2 text-xs uppercase transition-all hover:scale-105 flex-shrink-0 ml-3"
                   style={{
-                    width: '44px',
-                    height: '44px',
-                    borderRadius: '12px 8px 6px 10px',
-                    background: 'rgba(239, 47, 127, 0.2)'
+                    background: 'linear-gradient(135deg, rgba(120, 138, 255, 0.2) 0%, rgba(120, 138, 255, 0.1) 100%)',
+                    borderRadius: buttonBorderRadiusStyles[index],
+                    color: '#788AFF',
+                    border: '1px solid rgba(120, 138, 255, 0.3)'
                   }}
                 >
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 2L13.5 6.5L18 8L13.5 9.5L12 14L10.5 9.5L6 8L10.5 6.5L12 2Z" fill="#EF2F7F" />
-                    <path d="M5 14L5.75 16.25L8 17L5.75 17.75L5 20L4.25 17.75L2 17L4.25 16.25L5 14Z" fill="#EF2F7F" style={{ opacity: 0.7 }} />
-                    <path d="M19 14L19.75 16.25L22 17L19.75 17.75L19 20L18.25 17.75L16 17L18.25 16.25L19 14Z" fill="#EF2F7F" style={{ opacity: 0.7 }} />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-gray-500 text-xs uppercase">Purified DAEMONs</p>
-                  <div className="flex items-baseline gap-2">
-                    <p className="text-white text-xl font-bold">{purifiedDaemons}</p>
-                    <span className="text-gray-500 text-sm">collected</span>
-                  </div>
-                  <p className="text-[#2473BC] text-xs mt-1">→ {harvestable} ready to harvest</p>
-                </div>
-              </div>
-              <button
-                onClick={handlePurify}
-                disabled={actionLoading === 'purify' || isPurified || !walletAddress}
-                className="px-4 py-2 text-xs uppercase transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(239, 47, 127, 0.2) 0%, rgba(239, 47, 127, 0.1) 100%)',
-                  borderRadius: '10px 6px 4px 8px',
-                  color: '#EF2F7F',
-                  border: '1px solid rgba(239, 47, 127, 0.3)'
-                }}
-              >
-                {actionLoading === 'purify' ? 'Purifying...' : isPurified ? 'Purified' : 'Purify'}
-              </button>
-            </div>
-            {showTooltip === 'purify' && (
-              <div
-                className="absolute top-full left-0 right-0 mt-2 p-3 z-50"
-                style={{
-                  background: 'rgba(18, 18, 26, 0.98)',
-                  borderRadius: '8px 12px 10px 6px',
-                  border: '1px solid rgba(239, 47, 127, 0.3)',
-                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
-                }}
-              >
-                <p className="text-xs text-[#EF2F7F] font-medium mb-1">Purification Process</p>
-                <p className="text-xs text-gray-300 leading-relaxed mb-2">
-                  As an Angel holder, you can purify your staked DAEMON. Each consecutive day staked = 1 purified daemon. 
-                  Purified daemons become harvestable, allowing you to collect rewards and DAEMON Points.
-                </p>
-                <p className="text-xs text-[#2473BC] font-medium">
-                  {harvestable} DAEMON ready to harvest from {purifiedDaemons} purified tokens
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* DAEMON Harvesting */}
-        <div
-          className="p-4 relative"
-          style={{
-            background: 'linear-gradient(135deg, rgba(36, 115, 188, 0.08) 0%, rgba(18, 18, 26, 0.9) 100%)',
-            borderRadius: '8px 14px 18px 12px',
-            border: harvestable > 0 ? '2px solid rgba(36, 115, 188, 0.4)' : '1px solid rgba(36, 115, 188, 0.2)'
-          }}
-          onMouseEnter={() => setShowTooltip('harvest')}
-          onMouseLeave={() => setShowTooltip(null)}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {/* Harvest Icon */}
-              <div
-                className="flex items-center justify-center"
-                style={{
-                  width: '44px',
-                  height: '44px',
-                  borderRadius: '6px 10px 12px 8px',
-                  background: 'rgba(36, 115, 188, 0.15)'
-                }}
-              >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 3V8M12 8L9 5M12 8L15 5" stroke="#2473BC" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M12 21V16M12 16L9 19M12 16L15 19" stroke="#2473BC" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  <circle cx="12" cy="12" r="3" stroke="#2473BC" strokeWidth="1.5" fill="none" />
-                  <path d="M3 12H6M18 12H21" stroke="#2473BC" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-gray-500 text-xs uppercase">Harvesting</p>
-                <p className="text-white text-xl font-bold">{harvestable}</p>
-                {holdsAngel && harvestable > 0 && (
-                  <p className="text-[#7FFF5B] text-xs mt-1">✓ Ready to collect</p>
-                )}
-                {!holdsAngel && (
-                  <p className="text-gray-500 text-xs mt-1">Requires Angel + Purification</p>
-                )}
-                {holdsAngel && harvestable === 0 && isPurified && (
-                  <p className="text-gray-500 text-xs mt-1">All harvested</p>
-                )}
+                  Begin
+                </button>
               </div>
             </div>
-            <button
-              onClick={handleHarvest}
-              disabled={harvestable === 0 || !holdsAngel || !walletAddress || actionLoading === 'harvest'}
-              className="px-4 py-2 text-xs uppercase transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{
-                background: harvestable > 0 && holdsAngel
-                  ? 'linear-gradient(135deg, rgba(36, 115, 188, 0.2) 0%, rgba(36, 115, 188, 0.1) 100%)'
-                  : 'rgba(36, 115, 188, 0.1)',
-                borderRadius: '4px 8px 10px 6px',
-                color: '#2473BC',
-                border: '1px solid rgba(36, 115, 188, 0.3)'
-              }}
-            >
-              {actionLoading === 'harvest' ? 'Harvesting...' : 'Harvest'}
-            </button>
-          </div>
-          {showTooltip === 'harvest' && (
-            <div
-              className="absolute top-full left-0 right-0 mt-2 p-3 z-50"
-              style={{
-                background: 'rgba(18, 18, 26, 0.98)',
-                borderRadius: '8px 12px 10px 6px',
-                border: '1px solid rgba(36, 115, 188, 0.3)',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
-              }}
-            >
-              <p className="text-xs text-[#2473BC] font-medium mb-1">Harvesting Rewards</p>
-              <p className="text-xs text-gray-300 leading-relaxed">
-                {holdsAngel 
-                  ? `Harvest your purified DAEMON to collect rewards and earn DAEMON Points. You currently have ${harvestable} ready to harvest (${consecutiveDays} consecutive days staked).`
-                  : 'Harvesting requires an Angel NFT to purify staked DAEMON first. Without purification, tokens remain locked.'}
-              </p>
-            </div>
-          )}
-        </div>
+          )
+        })}
       </div>
 
       {/* Stake Modal */}

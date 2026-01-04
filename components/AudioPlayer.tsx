@@ -110,17 +110,52 @@ export default function AudioPlayer() {
   }
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0f]/95 backdrop-blur-sm border-b border-white/10">
-      <div className="flex items-center justify-center px-4 py-2 gap-3">
+    <div 
+      className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md"
+      style={{
+        background: 'linear-gradient(135deg, #F4F5FE 0%, #EAEBF4 100%)',
+        borderBottom: '1px solid #EAEBF4',
+        boxShadow: '0 4px 20px rgba(120, 138, 255, 0.15)'
+      }}
+    >
+      <div 
+        className="flex items-center justify-center px-6 py-3 gap-4 mx-auto max-w-md"
+        style={{
+          borderRadius: '0 0 32px 32px',
+          background: 'linear-gradient(135deg, rgba(244, 245, 254, 0.9) 0%, rgba(234, 235, 244, 0.9) 100%)',
+        }}
+      >
         {/* Previous Button */}
         <button
           onClick={prevTrack}
-          className="text-white/70 hover:text-white transition-colors p-1"
+          className="transition-all duration-300 p-2"
+          style={{
+            color: '#788AFF',
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #F4F5FE 0%, #EAEBF4 100%)',
+            border: '1.5px solid #788AFF',
+            width: '36px',
+            height: '36px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 2px 8px rgba(120, 138, 255, 0.2)'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'scale(1.1)'
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(120, 138, 255, 0.4)'
+            e.currentTarget.style.background = 'linear-gradient(135deg, #EAEBF4 0%, #F4F5FE 100%)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'scale(1)'
+            e.currentTarget.style.boxShadow = '0 2px 8px rgba(120, 138, 255, 0.2)'
+            e.currentTarget.style.background = 'linear-gradient(135deg, #F4F5FE 0%, #EAEBF4 100%)'
+          }}
           aria-label="Previous track"
         >
           <svg
-            width="16"
-            height="16"
+            width="14"
+            height="14"
             viewBox="0 0 24 24"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
@@ -128,7 +163,7 @@ export default function AudioPlayer() {
             <path
               d="M6 6L6 18M17 6L10 12L17 18L17 6Z"
               stroke="currentColor"
-              strokeWidth="2"
+              strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
@@ -138,7 +173,29 @@ export default function AudioPlayer() {
         {/* Play/Pause Button */}
         <button
           onClick={togglePlayPause}
-          className="text-white hover:text-[#7177FF] transition-colors p-1"
+          className="transition-all duration-300 p-2"
+          style={{
+            color: '#F4F5FE',
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #788AFF 0%, #6a7aee 100%)',
+            border: '2px solid #788AFF',
+            width: '48px',
+            height: '48px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 4px 16px rgba(120, 138, 255, 0.4)',
+            position: 'relative',
+            overflow: 'hidden'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'scale(1.1)'
+            e.currentTarget.style.boxShadow = '0 6px 20px rgba(120, 138, 255, 0.6)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'scale(1)'
+            e.currentTarget.style.boxShadow = '0 4px 16px rgba(120, 138, 255, 0.4)'
+          }}
           aria-label={isPlaying ? 'Pause' : 'Play'}
         >
           {isPlaying ? (
@@ -149,8 +206,8 @@ export default function AudioPlayer() {
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
             >
-              <rect x="6" y="4" width="4" height="16" fill="currentColor" />
-              <rect x="14" y="4" width="4" height="16" fill="currentColor" />
+              <rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" />
+              <rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" />
             </svg>
           ) : (
             <svg
@@ -171,12 +228,34 @@ export default function AudioPlayer() {
         {/* Next Button */}
         <button
           onClick={nextTrack}
-          className="text-white/70 hover:text-white transition-colors p-1"
+          className="transition-all duration-300 p-2"
+          style={{
+            color: '#788AFF',
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #F4F5FE 0%, #EAEBF4 100%)',
+            border: '1.5px solid #788AFF',
+            width: '36px',
+            height: '36px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 2px 8px rgba(120, 138, 255, 0.2)'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'scale(1.1)'
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(120, 138, 255, 0.4)'
+            e.currentTarget.style.background = 'linear-gradient(135deg, #EAEBF4 0%, #F4F5FE 100%)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'scale(1)'
+            e.currentTarget.style.boxShadow = '0 2px 8px rgba(120, 138, 255, 0.2)'
+            e.currentTarget.style.background = 'linear-gradient(135deg, #F4F5FE 0%, #EAEBF4 100%)'
+          }}
           aria-label="Next track"
         >
           <svg
-            width="16"
-            height="16"
+            width="14"
+            height="14"
             viewBox="0 0 24 24"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
@@ -184,7 +263,7 @@ export default function AudioPlayer() {
             <path
               d="M18 6L18 18M7 6L14 12L7 18L7 6Z"
               stroke="currentColor"
-              strokeWidth="2"
+              strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
@@ -192,7 +271,19 @@ export default function AudioPlayer() {
         </button>
 
         {/* Track Name */}
-        <div className="text-white/80 text-xs px-2 min-w-[120px] text-center">
+        <div 
+          className="text-xs px-3 py-1.5 min-w-[140px] text-center"
+          style={{
+            color: '#788AFF',
+            borderRadius: '20px',
+            background: 'linear-gradient(135deg, #EAEBF4 0%, #F4F5FE 100%)',
+            border: '1px solid #788AFF',
+            boxShadow: 'inset 0 1px 3px rgba(120, 138, 255, 0.1)',
+            fontFamily: "'IBM Plex Mono', monospace",
+            fontWeight: 500,
+            letterSpacing: '0.3px'
+          }}
+        >
           {currentTrack.name}
         </div>
 

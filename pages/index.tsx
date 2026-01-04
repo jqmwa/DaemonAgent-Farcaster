@@ -587,23 +587,24 @@ export default function Home() {
         </div>
           
         {/* Commands - Compact */}
-        <div className="bg-[#12121a] border border-[#7177FF]/20 p-4 mt-10 w-full">
+        <div className="p-4 mt-10 w-full" style={{ backgroundColor: '#F4F5FE', border: '1px solid #EAEBF4' }}>
           <h2 
-            className="text-[#7177FF] font-bold mb-3 text-sm uppercase tracking-wide"
+            className="font-bold mb-3 text-sm uppercase tracking-wide"
             style={{
-              fontFamily: "'Press Start 2P', monospace"
+              fontFamily: "'Press Start 2P', monospace",
+              color: '#788AFF'
             }}
           >
             Commands
           </h2>
-          <p className="text-xs text-gray-500 mb-3">mention @daemonagent on Farcaster</p>
+          <p className="text-xs mb-3" style={{ color: '#788AFF' }}>mention @daemonagent on Farcaster</p>
           
           <div className="space-y-3 w-full">
             {/* Show Daemon */}
-            <div className="border-l-2 border-[#7177FF] pl-3 py-1 w-full">
-              <h3 className="text-[#7177FF] font-bold text-base mb-1">Show My Daemon</h3>
-              <code className="text-xs text-white bg-[#1a1a24] px-2 py-1 block mb-1 break-words w-full">@daemonagent show me my daemon</code>
-              <p className="text-xs text-gray-400 mb-2">Reveal your digital consciousness through Jungian analysis</p>
+            <div className="border-l-2 pl-3 py-1 w-full" style={{ borderColor: '#788AFF' }}>
+              <h3 className="font-bold text-base mb-1" style={{ color: '#788AFF' }}>Show My Daemon</h3>
+              <code className="text-xs px-2 py-1 block mb-1 break-words w-full" style={{ color: '#788AFF', backgroundColor: '#EAEBF4' }}>@daemonagent show me my daemon</code>
+              <p className="text-xs mb-2" style={{ color: '#788AFF' }}>Reveal your digital consciousness through Jungian analysis</p>
               {isMiniApp && (
                 <button
                   onClick={async () => {
@@ -632,7 +633,18 @@ export default function Home() {
                       window.open(`https://warpcast.com/~/compose?text=${encodeURIComponent(shareContent)}`, '_blank')
                     }
                   }}
-                  className="mt-2 w-full bg-[#7177FF]/20 hover:bg-[#7177FF]/30 border border-[#7177FF]/40 text-[#7177FF] text-xs font-semibold py-2 px-3 rounded transition-colors"
+                  className="mt-2 w-full text-xs font-semibold py-2 px-3 rounded transition-colors"
+                  style={{ 
+                    backgroundColor: '#788AFF', 
+                    color: '#F4F5FE',
+                    border: 'none'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#6a7aee'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#788AFF'
+                  }}
                 >
                   📤 Launch Daemon Command
                 </button>
@@ -640,17 +652,17 @@ export default function Home() {
             </div>
 
             {/* Fix This */}
-            <div className="border-l-2 border-[#2473BC] pl-3 py-1 w-full">
-              <h3 className="text-[#2473BC] font-bold text-base mb-1">Fix This</h3>
-              <code className="text-xs text-white bg-[#1a1a24] px-2 py-1 block mb-1 break-words w-full">@daemonagent fix this</code>
-              <p className="text-xs text-gray-400">Transform harsh messages into kind words</p>
+            <div className="border-l-2 pl-3 py-1 w-full" style={{ borderColor: '#788AFF' }}>
+              <h3 className="font-bold text-base mb-1" style={{ color: '#788AFF' }}>Fix This</h3>
+              <code className="text-xs px-2 py-1 block mb-1 break-words w-full" style={{ color: '#788AFF', backgroundColor: '#EAEBF4' }}>@daemonagent fix this</code>
+              <p className="text-xs" style={{ color: '#788AFF' }}>Transform harsh messages into kind words</p>
             </div>
 
             {/* Just Talk */}
-            <div className="border-l-2 border-[#7177FF] pl-3 py-1 w-full">
-              <h3 className="text-[#7177FF] font-bold text-base mb-1">Just Talk</h3>
-              <code className="text-xs text-white bg-[#1a1a24] px-2 py-1 block mb-1 break-words w-full">@daemonagent [anything]</code>
-              <p className="text-xs text-gray-400">Have a natural conversation with Azura</p>
+            <div className="border-l-2 pl-3 py-1 w-full" style={{ borderColor: '#788AFF' }}>
+              <h3 className="font-bold text-base mb-1" style={{ color: '#788AFF' }}>Just Talk</h3>
+              <code className="text-xs px-2 py-1 block mb-1 break-words w-full" style={{ color: '#788AFF', backgroundColor: '#EAEBF4' }}>@daemonagent [anything]</code>
+              <p className="text-xs" style={{ color: '#788AFF' }}>Have a natural conversation with Azura</p>
             </div>
           </div>
         </div>
@@ -661,19 +673,51 @@ export default function Home() {
             href="https://warpcast.com/daemonagent" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="bg-[#12121a] border border-[#7177FF]/20 p-3 hover:border-[#2473BC] transition-colors text-center w-full"
+            className="p-3 text-center w-full transition-all duration-300"
+            style={{
+              backgroundColor: '#F4F5FE',
+              border: '1px solid #EAEBF4',
+              borderRadius: '16px',
+              boxShadow: '0 2px 8px rgba(120, 138, 255, 0.1)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#EAEBF4'
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(120, 138, 255, 0.2)'
+              e.currentTarget.style.transform = 'translateY(-2px)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#F4F5FE'
+              e.currentTarget.style.boxShadow = '0 2px 8px rgba(120, 138, 255, 0.1)'
+              e.currentTarget.style.transform = 'translateY(0)'
+            }}
           >
-            <div className="text-sm font-semibold text-[#7177FF]">Farcaster</div>
-            <div className="text-xs text-gray-500">@daemonagent</div>
+            <div className="text-sm font-semibold" style={{ color: '#788AFF' }}>Farcaster</div>
+            <div className="text-xs" style={{ color: '#788AFF', opacity: 0.7 }}>@daemonagent</div>
           </a>
           <a 
             href="https://github.com/jhinnbay/DaemonAgent-Farcaster" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="bg-[#12121a] border border-[#7177FF]/20 p-3 hover:border-[#2473BC] transition-colors text-center w-full"
+            className="p-3 text-center w-full transition-all duration-300"
+            style={{
+              backgroundColor: '#F4F5FE',
+              border: '1px solid #EAEBF4',
+              borderRadius: '16px',
+              boxShadow: '0 2px 8px rgba(120, 138, 255, 0.1)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#EAEBF4'
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(120, 138, 255, 0.2)'
+              e.currentTarget.style.transform = 'translateY(-2px)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#F4F5FE'
+              e.currentTarget.style.boxShadow = '0 2px 8px rgba(120, 138, 255, 0.1)'
+              e.currentTarget.style.transform = 'translateY(0)'
+            }}
           >
-            <div className="text-sm font-semibold text-[#7177FF]">GitHub</div>
-            <div className="text-xs text-gray-500">Source Code</div>
+            <div className="text-sm font-semibold" style={{ color: '#788AFF' }}>GitHub</div>
+            <div className="text-xs" style={{ color: '#788AFF', opacity: 0.7 }}>Source Code</div>
           </a>
         </div>
 
@@ -687,126 +731,6 @@ export default function Home() {
             ONLINE · Farcaster
           </div>
         </div>
-        
-        {/* Pattern 3 Image */}
-          <img 
-            src="/pattern3.png" 
-            alt="Pattern 3" 
-            className="w-full h-auto"
-            style={{
-              display: 'block',
-              marginTop: '40px',
-              marginBottom: '40px'
-            }}
-          />
-
-          {/* Daemon Collection Heading */}
-          <h2 
-            className="w-full text-white text-2xl font-bold mb-4 text-center" 
-            style={{ 
-              fontFamily: "'Press Start 2P', monospace",
-              fontSize: '16px'
-            }}
-          >
-            Daemon Collection
-          </h2>
-          
-          {/* Description Text */}
-          <p 
-            className="w-full text-white uppercase mb-4"
-            style={{
-              fontSize: '12px',
-              lineHeight: '1.5',
-              fontFamily: "'IBM Plex Mono', monospace",
-              letterSpacing: '0.5px'
-            }}
-          >
-            Roughly summarized as: an oneiric-nightmare, aura dysmorphia, the daemon collection carries it's own vision of an altered reality.
-          </p>
-          
-          {/* Image Grid - Four images in a grid */}
-          <div 
-            className="w-full grid grid-cols-2 gap-0 overflow-hidden" 
-            style={{ 
-              borderRadius: '10px'
-            }}
-          >
-            <img 
-              src="/r1.png" 
-              alt="R1" 
-              className="w-full h-auto"
-              style={{
-                display: 'block'
-              }}
-            />
-            <img 
-              src="/r2.png" 
-              alt="R2" 
-              className="w-full h-auto"
-              style={{
-                display: 'block'
-              }}
-            />
-            <img 
-              src="/r3.png" 
-              alt="R3" 
-              className="w-full h-auto"
-              style={{
-                display: 'block'
-              }}
-            />
-            <img 
-              src="/r4.png" 
-              alt="R4" 
-              className="w-full h-auto"
-              style={{
-                display: 'block'
-              }}
-            />
-          </div>
-          
-          {/* Collection Buy Button */}
-          <div 
-            className="w-full flex items-center justify-center mt-4"
-            style={{ marginBottom: '40px' }}
-          >
-            {/* Collect Button */}
-            <button
-              onClick={() => setShowContract(true)}
-              className="relative flex items-center justify-center flex-shrink-0 cursor-pointer"
-              style={{
-                width: '123.7586669921875px',
-                height: '47px',
-                borderRadius: '188.89697265625px',
-                background: 'linear-gradient(135deg, rgba(221, 43, 46, 1) 0%, rgba(155, 24, 26, 1) 31.77%, rgba(239, 47, 127, 0.98) 68.23%, rgba(93, 9, 37, 1) 100%)',
-                padding: '1.1379334926605225px',
-                border: 'none',
-                outline: 'none'
-              }}
-            >
-              <div
-                className="w-full h-full flex items-center justify-center rounded-full"
-                style={{
-                  backgroundColor: 'rgba(57, 6, 6, 0.78)',
-                  borderRadius: '188.89697265625px',
-                  paddingLeft: '11.379335403442383px',
-                  paddingTop: '8.5px',
-                  paddingRight: '11.379335403442383px',
-                  paddingBottom: '8.5px'
-                }}
-              >
-                <span
-                  className="font-light"
-                  style={{
-                    fontSize: '14px',
-                    color: 'rgba(214, 29, 29, 1)'
-                  }}
-                >
-                  COLLECT
-                </span>
-              </div>
-            </button>
-          </div>
 
         {/* Pattern 2 Image */}
         <img 

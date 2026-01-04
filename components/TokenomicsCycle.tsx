@@ -13,49 +13,48 @@ export default function TokenomicsCycle() {
 
   const steps: CycleStep[] = [
     {
-      id: 'buy',
-      title: 'BUY',
-      description: 'Acquire $DAEMON tokens to start your journey',
-      icon: (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" fill="none" />
-          <path d="M12 8V16M8 12H16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
-      ),
-      color: '#EF2F7F'
-    },
-    {
-      id: 'stake',
-      title: 'STAKE',
-      description: 'Lock your $DAEMON to earn passive rewards over time',
-      icon: (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none" />
-          <path d="M8 11V7C8 4.79086 9.79086 3 12 3C14.2091 3 16 4.79086 16 7V11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
-          <circle cx="12" cy="16" r="1.5" fill="currentColor" />
-        </svg>
-      ),
-      color: '#7177FF'
-    },
-    {
-      id: 'purify',
-      title: 'PURIFY',
-      description: 'Purify staked DAEMON, making it harvestable',
+      id: 'angel',
+      title: 'GET ANGEL',
+      description: 'Acquire an Angel NFT to participate in surveys',
       icon: (
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M12 2L14 8L20 8L15 12L17 18L12 14L7 18L9 12L4 8L10 8L12 2Z" fill="currentColor" />
+          <circle cx="12" cy="12" r="3" fill="currentColor" style={{ opacity: 0.3 }} />
         </svg>
       ),
       color: '#FFD700'
     },
     {
-      id: 'harvest',
-      title: 'HARVEST',
-      description: 'Collect your purified DAEMON rewards and DAEMON Points',
+      id: 'start',
+      title: 'START QUIZ',
+      description: 'Begin a survey to explore your digital consciousness',
       icon: (
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 3V8M12 8L9 5M12 8L15 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M12 21V16M12 16L9 19M12 16L15 19" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" fill="none" />
+          <path d="M12 6V12L16 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+        </svg>
+      ),
+      color: '#EF2F7F'
+    },
+    {
+      id: 'complete',
+      title: 'COMPLETE',
+      description: 'Finish the survey within the time limit',
+      icon: (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9 11L12 14L22 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M21 12V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+        </svg>
+      ),
+      color: '#7177FF'
+    },
+    {
+      id: 'reward',
+      title: 'REWARD',
+      description: 'Collect DAEMON Points and unlock your insights',
+      icon: (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2L13.5 6.5L18 8L13.5 9.5L12 14L10.5 9.5L6 8L10.5 6.5L12 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
           <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.5" fill="none" />
           <path d="M3 12H6M18 12H21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
         </svg>
@@ -67,13 +66,14 @@ export default function TokenomicsCycle() {
   return (
     <div className="w-full py-6">
       <h2 
-        className="text-[#7177FF] uppercase tracking-wider mb-6 text-center"
+        className="uppercase tracking-wider mb-6 text-center"
         style={{ 
           fontFamily: "'Press Start 2P', monospace",
-          fontSize: '12px'
+          fontSize: '12px',
+          color: '#788AFF'
         }}
       >
-        The DAEMON Cycle
+        The Survey Cycle
       </h2>
 
       {/* Cycle Visualization */}
@@ -87,13 +87,23 @@ export default function TokenomicsCycle() {
           {/* Arrow paths connecting steps */}
           <defs>
             <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-              <polygon points="0 0, 10 3, 0 6" fill="#7177FF" opacity="0.6" />
+              <polygon points="0 0, 10 3, 0 6" fill="#788AFF" opacity="0.6" />
             </marker>
           </defs>
           
-          {/* Path from Buy to Stake */}
+          {/* Path from Angel to Start */}
           <path
             d="M 100 80 Q 150 50 200 80"
+            stroke="#EF2F7F"
+            strokeWidth="2"
+            fill="none"
+            opacity="0.4"
+            markerEnd="url(#arrowhead)"
+          />
+          
+          {/* Path from Start to Complete */}
+          <path
+            d="M 320 80 Q 350 120 320 160"
             stroke="#7177FF"
             strokeWidth="2"
             fill="none"
@@ -101,17 +111,7 @@ export default function TokenomicsCycle() {
             markerEnd="url(#arrowhead)"
           />
           
-          {/* Path from Stake to Purify */}
-          <path
-            d="M 320 80 Q 350 120 320 160"
-            stroke="#FFD700"
-            strokeWidth="2"
-            fill="none"
-            opacity="0.4"
-            markerEnd="url(#arrowhead)"
-          />
-          
-          {/* Path from Purify to Harvest */}
+          {/* Path from Complete to Reward */}
           <path
             d="M 320 220 Q 280 250 200 250"
             stroke="#2473BC"
@@ -121,10 +121,10 @@ export default function TokenomicsCycle() {
             markerEnd="url(#arrowhead)"
           />
           
-          {/* Path from Harvest to Buy (cycle continues) */}
+          {/* Path from Reward to Angel (cycle continues) */}
           <path
             d="M 80 250 Q 50 180 80 130"
-            stroke="#EF2F7F"
+            stroke="#FFD700"
             strokeWidth="2"
             fill="none"
             opacity="0.3"
@@ -135,22 +135,22 @@ export default function TokenomicsCycle() {
 
         {/* Step Cards */}
         <div className="relative grid grid-cols-2 gap-6">
-          {/* Buy */}
+          {/* Get Angel */}
           <div
             className="relative"
-            onMouseEnter={() => setHoveredStep('buy')}
+            onMouseEnter={() => setHoveredStep('angel')}
             onMouseLeave={() => setHoveredStep(null)}
           >
             <div
-              className="p-4 cursor-pointer transition-all"
+              className="p-4 cursor-pointer transition-all relative"
               style={{
-                background: hoveredStep === 'buy'
-                  ? `linear-gradient(135deg, rgba(239, 47, 127, 0.2) 0%, rgba(18, 18, 26, 0.9) 100%)`
+                background: hoveredStep === 'angel'
+                  ? `linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(18, 18, 26, 0.9) 100%)`
                   : 'linear-gradient(135deg, rgba(18, 18, 26, 0.9) 0%, rgba(12, 12, 18, 0.95) 100%)',
                 borderRadius: '16px 8px 12px 6px',
-                border: `2px solid ${hoveredStep === 'buy' ? steps[0].color : 'rgba(239, 47, 127, 0.2)'}`,
-                transform: hoveredStep === 'buy' ? 'scale(1.05)' : 'scale(1)',
-                boxShadow: hoveredStep === 'buy' ? `0 0 20px ${steps[0].color}40` : 'none'
+                border: `2px solid ${hoveredStep === 'angel' ? steps[0].color : 'rgba(255, 215, 0, 0.3)'}`,
+                transform: hoveredStep === 'angel' ? 'scale(1.05)' : 'scale(1)',
+                boxShadow: hoveredStep === 'angel' ? `0 0 20px ${steps[0].color}40` : 'none'
               }}
             >
               <div 
@@ -175,22 +175,22 @@ export default function TokenomicsCycle() {
             </div>
           </div>
 
-          {/* Stake */}
+          {/* Start Quiz */}
           <div
             className="relative"
-            onMouseEnter={() => setHoveredStep('stake')}
+            onMouseEnter={() => setHoveredStep('start')}
             onMouseLeave={() => setHoveredStep(null)}
           >
             <div
               className="p-4 cursor-pointer transition-all"
               style={{
-                background: hoveredStep === 'stake'
-                  ? `linear-gradient(135deg, rgba(113, 119, 255, 0.2) 0%, rgba(18, 18, 26, 0.9) 100%)`
+                background: hoveredStep === 'start'
+                  ? `linear-gradient(135deg, rgba(239, 47, 127, 0.2) 0%, rgba(18, 18, 26, 0.9) 100%)`
                   : 'linear-gradient(135deg, rgba(18, 18, 26, 0.9) 0%, rgba(12, 12, 18, 0.95) 100%)',
                 borderRadius: '8px 16px 6px 12px',
-                border: `2px solid ${hoveredStep === 'stake' ? steps[1].color : 'rgba(113, 119, 255, 0.2)'}`,
-                transform: hoveredStep === 'stake' ? 'scale(1.05)' : 'scale(1)',
-                boxShadow: hoveredStep === 'stake' ? `0 0 20px ${steps[1].color}40` : 'none'
+                border: `2px solid ${hoveredStep === 'start' ? steps[1].color : 'rgba(239, 47, 127, 0.2)'}`,
+                transform: hoveredStep === 'start' ? 'scale(1.05)' : 'scale(1)',
+                boxShadow: hoveredStep === 'start' ? `0 0 20px ${steps[1].color}40` : 'none'
               }}
             >
               <div 
@@ -215,22 +215,22 @@ export default function TokenomicsCycle() {
             </div>
           </div>
 
-          {/* Purify (with Angel requirement) */}
+          {/* Complete */}
           <div
             className="relative"
-            onMouseEnter={() => setHoveredStep('purify')}
+            onMouseEnter={() => setHoveredStep('complete')}
             onMouseLeave={() => setHoveredStep(null)}
           >
             <div
-              className="p-4 cursor-pointer transition-all relative"
+              className="p-4 cursor-pointer transition-all"
               style={{
-                background: hoveredStep === 'purify'
-                  ? `linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(18, 18, 26, 0.9) 100%)`
+                background: hoveredStep === 'complete'
+                  ? `linear-gradient(135deg, rgba(113, 119, 255, 0.2) 0%, rgba(18, 18, 26, 0.9) 100%)`
                   : 'linear-gradient(135deg, rgba(18, 18, 26, 0.9) 0%, rgba(12, 12, 18, 0.95) 100%)',
                 borderRadius: '12px 6px 16px 8px',
-                border: `2px solid ${hoveredStep === 'purify' ? steps[2].color : 'rgba(255, 215, 0, 0.3)'}`,
-                transform: hoveredStep === 'purify' ? 'scale(1.05)' : 'scale(1)',
-                boxShadow: hoveredStep === 'purify' ? `0 0 20px ${steps[2].color}40` : 'none'
+                border: `2px solid ${hoveredStep === 'complete' ? steps[2].color : 'rgba(113, 119, 255, 0.2)'}`,
+                transform: hoveredStep === 'complete' ? 'scale(1.05)' : 'scale(1)',
+                boxShadow: hoveredStep === 'complete' ? `0 0 20px ${steps[2].color}40` : 'none'
               }}
             >
               <div 
@@ -255,22 +255,22 @@ export default function TokenomicsCycle() {
             </div>
           </div>
 
-          {/* Harvest */}
+          {/* Reward */}
           <div
             className="relative"
-            onMouseEnter={() => setHoveredStep('harvest')}
+            onMouseEnter={() => setHoveredStep('reward')}
             onMouseLeave={() => setHoveredStep(null)}
           >
             <div
               className="p-4 cursor-pointer transition-all"
               style={{
-                background: hoveredStep === 'harvest'
+                background: hoveredStep === 'reward'
                   ? `linear-gradient(135deg, rgba(36, 115, 188, 0.2) 0%, rgba(18, 18, 26, 0.9) 100%)`
                   : 'linear-gradient(135deg, rgba(18, 18, 26, 0.9) 0%, rgba(12, 12, 18, 0.95) 100%)',
                 borderRadius: '6px 12px 8px 16px',
-                border: `2px solid ${hoveredStep === 'harvest' ? steps[3].color : 'rgba(36, 115, 188, 0.2)'}`,
-                transform: hoveredStep === 'harvest' ? 'scale(1.05)' : 'scale(1)',
-                boxShadow: hoveredStep === 'harvest' ? `0 0 20px ${steps[3].color}40` : 'none'
+                border: `2px solid ${hoveredStep === 'reward' ? steps[3].color : 'rgba(36, 115, 188, 0.2)'}`,
+                transform: hoveredStep === 'reward' ? 'scale(1.05)' : 'scale(1)',
+                boxShadow: hoveredStep === 'reward' ? `0 0 20px ${steps[3].color}40` : 'none'
               }}
             >
               <div 
