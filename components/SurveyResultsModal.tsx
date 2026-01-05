@@ -6,6 +6,7 @@ import { sdk } from '@farcaster/miniapp-sdk'
 interface SurveyResults {
   surveyId: string
   surveyTitle: string
+  personalizedTitle: string
   answers: Record<number, string>
   analysis: string
   insights: string[]
@@ -40,45 +41,21 @@ export default function SurveyResultsModal({ isOpen, onClose, results, txHash }:
     setShareError(null)
 
     try {
-      const shareText = `I just completed the "${results.surveyTitle}" survey!\n\n${results.analysis.substring(0, 200)}${results.analysis.length > 200 ? '...' : ''}`
+      const miniAppUrl = 'https://daemoncast.vercel.app'
+      const shareText = `I am "${results.personalizedTitle}"\n\n${results.analysis.substring(0, 200)}${results.analysis.length > 200 ? '...' : ''}`
 
       if (sdk.actions?.composeCast) {
         await sdk.actions.composeCast({
           text: shareText,
+          embeds: [miniAppUrl] as [string],
         })
       } else {
         // Fallback: open Warpcast compose URL
-        const composeUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}`
+        const composeUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}&embeds[]=${encodeURIComponent(miniAppUrl)}`
         window.open(composeUrl, '_blank')
       }
     } catch (error) {
       console.error('[SurveyResultsModal] Error sharing to Farcaster:', error)
-      setShareError('Failed to share. Please try again.')
-    } finally {
-      setIsSharing(false)
-    }
-  }
-
-  const handleShareBase = async () => {
-    setIsSharing(true)
-    setShareError(null)
-
-    try {
-      // Create a shareable URL with the results
-      const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
-      const shareUrl = `${baseUrl}/survey-results?survey=${results.surveyId}&tx=${txHash || 'pending'}`
-      
-      // For Base, we can open a transaction explorer or share URL
-      if (txHash) {
-        const explorerUrl = `https://basescan.org/tx/${txHash}`
-        window.open(explorerUrl, '_blank')
-      } else {
-        // Copy to clipboard as fallback
-        await navigator.clipboard.writeText(shareUrl)
-        alert('Results URL copied to clipboard!')
-      }
-    } catch (error) {
-      console.error('[SurveyResultsModal] Error sharing to Base:', error)
       setShareError('Failed to share. Please try again.')
     } finally {
       setIsSharing(false)
@@ -207,7 +184,7 @@ export default function SurveyResultsModal({ isOpen, onClose, results, txHash }:
             </div>
           </div>
 
-          {/* Survey Title */}
+          {/* Personalized Title */}
           <div
             className="text-center mb-6"
             style={{
@@ -219,16 +196,25 @@ export default function SurveyResultsModal({ isOpen, onClose, results, txHash }:
             <h3
               className="text-white font-bold mb-2"
               style={{
-                fontFamily: "'IBM Plex Mono', monospace",
-                fontSize: '18px',
-                lineHeight: '1.4'
+                fontFamily: "'Press Start 2P', monospace",
+                fontSize: '14px',
+                lineHeight: '1.4',
+                color: '#788AFF'
+              }}
+            >
+              {results.personalizedTitle || results.surveyTitle}
+            </h3>
+            <p
+              className="text-gray-400 text-xs mt-2"
+              style={{
+                fontFamily: "'IBM Plex Mono', monospace"
               }}
             >
               {results.surveyTitle}
-            </h3>
+            </p>
             {txHash && (
               <p
-                className="text-gray-400 text-xs"
+                className="text-gray-500 text-xs mt-1"
                 style={{
                   fontFamily: "'IBM Plex Mono', monospace",
                   wordBreak: 'break-all'
@@ -331,7 +317,7 @@ export default function SurveyResultsModal({ isOpen, onClose, results, txHash }:
           )}
         </div>
 
-        {/* Footer with Share Buttons */}
+        {/* Footer with Share Button */}
         <div
           className="flex-shrink-0 p-4 border-t"
           style={{
@@ -342,38 +328,21 @@ export default function SurveyResultsModal({ isOpen, onClose, results, txHash }:
             transition: 'all 0.4s ease 0.6s'
           }}
         >
-          <div className="flex gap-3">
-            <button
-              onClick={handleShareFarcaster}
-              disabled={isSharing}
-              className="flex-1 px-4 py-3 text-sm uppercase transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{
-                background: 'linear-gradient(135deg, rgba(120, 138, 255, 0.2) 0%, rgba(120, 138, 255, 0.1) 100%)',
-                borderRadius: '8px 4px 6px 10px',
-                color: '#788AFF',
-                border: '2px solid rgba(120, 138, 255, 0.3)',
-                fontSize: '11px',
-                fontFamily: "'Press Start 2P', monospace"
-              }}
-            >
-              {isSharing ? 'Sharing...' : 'Share on Farcaster'}
-            </button>
-            <button
-              onClick={handleShareBase}
-              disabled={isSharing}
-              className="flex-1 px-4 py-3 text-sm uppercase transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{
-                background: 'linear-gradient(135deg, rgba(0, 82, 255, 0.2) 0%, rgba(0, 82, 255, 0.1) 100%)',
-                borderRadius: '4px 8px 10px 6px',
-                color: '#0052FF',
-                border: '2px solid rgba(0, 82, 255, 0.3)',
-                fontSize: '11px',
-                fontFamily: "'Press Start 2P', monospace"
-              }}
-            >
-              {isSharing ? 'Sharing...' : 'View on Base'}
-            </button>
-          </div>
+          <button
+            onClick={handleShareFarcaster}
+            disabled={isSharing}
+            className="w-full px-4 py-3 text-sm uppercase transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              background: 'linear-gradient(135deg, rgba(120, 138, 255, 0.2) 0%, rgba(120, 138, 255, 0.1) 100%)',
+              borderRadius: '8px 4px 6px 10px',
+              color: '#788AFF',
+              border: '2px solid rgba(120, 138, 255, 0.3)',
+              fontSize: '11px',
+              fontFamily: "'Press Start 2P', monospace"
+            }}
+          >
+            {isSharing ? 'Sharing...' : 'Share on Farcaster'}
+          </button>
         </div>
       </div>
     </div>

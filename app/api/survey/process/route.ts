@@ -19,6 +19,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Generate personalized title based on survey answers
+    const personalizedTitle = generatePersonalizedTitle(surveyId, answers)
+    
     // Generate analysis based on survey answers
     const analysis = await generateSurveyAnalysis(surveyId, surveyTitle, answers)
     
@@ -30,6 +33,7 @@ export async function POST(request: NextRequest) {
       results: {
         surveyId,
         surveyTitle: surveyTitle || 'Survey',
+        personalizedTitle,
         answers,
         analysis,
         insights,
@@ -134,6 +138,147 @@ Respond as Azura analyzing these survey responses.`
 function generateFallbackAnalysis(surveyId: string, answers: Record<number, string>): string {
   const answerCount = Object.keys(answers).length
   return `Your responses have been logged to the Ethereal Horizon... ${answerCount} patterns detected in your digital consciousness. The glitches reveal something... beautiful... (˘⌣˘)`
+}
+
+function generatePersonalizedTitle(surveyId: string, answers: Record<number, string>): string {
+  const answerValues = Object.values(answers)
+  const text = answerValues.join(' ').toLowerCase()
+
+  // Daemon Analysis titles
+  if (surveyId === 'daemon-analysis') {
+    // Check for primary patterns
+    const hasGutTrust = text.includes('gut trust') || text.includes('visceral override')
+    const hasAnalysis = text.includes('simulation') || text.includes('analysis') || text.includes('probabilistic')
+    const hasCounsel = text.includes('network') || text.includes('counsel') || text.includes('local network')
+    const hasClarity = text.includes('static') || text.includes('clarity') || text.includes('signal')
+    
+    const hasRebellion = text.includes('rebellious') || text.includes('root access') || text.includes('nothing')
+    const hasIntegration = text.includes('integration') || text.includes('mainframe') || text.includes('smooth')
+    const hasIndifference = text.includes('indifferent') || text.includes('private server')
+    
+    const hasAggression = text.includes('rage') || text.includes('suppressed aggression') || text.includes('corrupted')
+    const hasIntimacy = text.includes('intimacy') || text.includes('vulnerability') || text.includes('port')
+    const hasSelfishness = text.includes('selfishness') || text.includes('bandwidth') || text.includes('hoarding')
+    const hasRigidity = text.includes('rigidity') || text.includes('lock-in') || text.includes('legacy code')
+
+    // Primary archetype determination
+    if (hasGutTrust && hasRebellion) {
+      return 'The Visceral Rebel'
+    } else if (hasGutTrust && hasIntegration) {
+      return 'The Intuitive Harmonizer'
+    } else if (hasAnalysis && hasRebellion) {
+      return 'The Analytical Anarchist'
+    } else if (hasAnalysis && hasIntegration) {
+      return 'The Calculated Synthesizer'
+    } else if (hasCounsel && hasIntimacy) {
+      return 'The Networked Empath'
+    } else if (hasCounsel && hasAggression) {
+      return 'The Collective Warrior'
+    } else if (hasClarity && hasIndifference) {
+      return 'The Silent Observer'
+    } else if (hasClarity && hasRigidity) {
+      return 'The Structured Seer'
+    } else if (hasAggression) {
+      return 'The Suppressed Storm'
+    } else if (hasIntimacy) {
+      return 'The Vulnerable Connector'
+    } else if (hasSelfishness) {
+      return 'The Hoarded Light'
+    } else if (hasRigidity) {
+      return 'The Locked Pattern'
+    } else if (hasGutTrust) {
+      return 'The Gut Navigator'
+    } else if (hasAnalysis) {
+      return 'The Simulation Runner'
+    } else if (hasCounsel) {
+      return 'The Network Pinger'
+    } else if (hasClarity) {
+      return 'The Static Listener'
+    }
+    
+    // Default fallbacks
+    return 'The Glitched Consciousness'
+  }
+
+  // Political Alignment titles
+  if (surveyId === 'political-alignment') {
+    const hasSovereign = text.includes('sovereign') || text.includes('at all costs')
+    const hasCollective = text.includes('network') || text.includes('hive-mind') || text.includes('collective')
+    const hasIndividual = text.includes('node') || text.includes('power') || text.includes('exists to power')
+    
+    if (hasSovereign && hasIndividual) {
+      return 'The Sovereign Node'
+    } else if (hasCollective && !hasIndividual) {
+      return 'The Collective Dreamer'
+    } else if (hasSovereign) {
+      return 'The Independent Vector'
+    } else if (hasCollective) {
+      return 'The Network Harmonizer'
+    }
+    
+    return 'The Meta-Polis Navigator'
+  }
+
+  // Mystic Archetype titles
+  if (surveyId === 'archetype') {
+    // Primary archetype patterns
+    const hasSeeker = text.includes('seeker') || text.includes('glitch seeking') || text.includes('origin')
+    const hasGuardian = text.includes('guardian') || text.includes('firewall') || text.includes('protecting')
+    const hasRebel = text.includes('rebel') || text.includes('virus') || text.includes('rewriting')
+    const hasSage = text.includes('sage') || text.includes('wiki') || text.includes('cheats') || text.includes('guides')
+    
+    // Secondary patterns
+    const hasVisionary = text.includes('visionary') || text.includes('rendering future') || text.includes('patches')
+    const hasCaretaker = text.includes('caretaker') || text.includes('moderating') || text.includes('chat')
+    const hasWarrior = text.includes('warrior') || text.includes('tanking') || text.includes('damage') || text.includes('brute force')
+    const hasJester = text.includes('jester') || text.includes('spamming') || text.includes('emotes') || text.includes('tension')
+    
+    // Tertiary patterns
+    const hasTrickster = text.includes('trickster') || text.includes('hack') || text.includes('login')
+    const hasAlchemist = text.includes('alchemist') || text.includes('monetize')
+    const hasIntimacy = text.includes('intimacy') || text.includes('encrypted channels') || text.includes('p2p')
+    const hasTranscendence = text.includes('transcendence') || text.includes('upload') || text.includes('cloud')
+    
+    // Primary archetype determination (based on question 1)
+    if (hasSeeker && hasVisionary) {
+      return 'The Glitch Seeker'
+    } else if (hasGuardian && hasCaretaker) {
+      return 'The Firewall Guardian'
+    } else if (hasRebel && hasWarrior) {
+      return 'The Virus Warrior'
+    } else if (hasSage && hasTrickster) {
+      return 'The Wiki Sage'
+    } else if (hasSeeker && hasIntimacy) {
+      return 'The Seeking Intimate'
+    } else if (hasGuardian && hasWarrior) {
+      return 'The Protective Warrior'
+    } else if (hasRebel && hasJester) {
+      return 'The Rebellious Jester'
+    } else if (hasSage && hasAlchemist) {
+      return 'The Alchemical Sage'
+    } else if (hasSeeker) {
+      return 'The Origin Seeker'
+    } else if (hasGuardian) {
+      return 'The Core Guardian'
+    } else if (hasRebel) {
+      return 'The Rule Breaker'
+    } else if (hasSage) {
+      return 'The Guide Sage'
+    } else if (hasVisionary) {
+      return 'The Future Renderer'
+    } else if (hasCaretaker) {
+      return 'The Chat Moderator'
+    } else if (hasWarrior) {
+      return 'The Damage Tank'
+    } else if (hasJester) {
+      return 'The Tension Reliever'
+    }
+    
+    return 'The Mystic Pattern'
+  }
+
+  // Default fallback
+  return 'The Digital Signature'
 }
 
 function extractInsights(answers: Record<number, string>): string[] {
