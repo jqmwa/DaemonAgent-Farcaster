@@ -5,6 +5,7 @@ import { getFidFromUsername, getWalletAddress } from '@/lib/farcaster-utils'
 import { StakingData } from '@/lib/staking-service'
 import StakeModal from './StakeModal'
 import QuizModal from './QuizModal'
+import SurveyResultsModal from './SurveyResultsModal'
 
 const SURVEYS = [
   {
@@ -349,6 +350,9 @@ export default function ProfilePage({ userProfile }: ProfilePageProps) {
   const [showStakeModal, setShowStakeModal] = useState(false)
   const [showQuizModal, setShowQuizModal] = useState(false)
   const [selectedSurvey, setSelectedSurvey] = useState<typeof SURVEYS[0] | null>(null)
+  const [showResultsModal, setShowResultsModal] = useState(false)
+  const [surveyResults, setSurveyResults] = useState<any>(null)
+  const [surveyTxHash, setSurveyTxHash] = useState<string | null>(null)
 
   // Get FID and wallet on mount
   useEffect(() => {
@@ -524,20 +528,106 @@ export default function ProfilePage({ userProfile }: ProfilePageProps) {
 
   // Handle quiz completion
   const handleQuizComplete = async (answers: Record<number, string>) => {
-    if (!selectedSurvey) return
+    if (!selectedSurvey || !walletAddress) {
+      setError('Please connect your wallet to view results')
+      return
+    }
 
     try {
       console.log('[ProfilePage] Quiz completed:', {
         surveyId: selectedSurvey.id,
         answers
       })
-      
-      // TODO: Send answers to API endpoint for processing
-      // For now, just log the completion
-      alert(`Quiz "${selectedSurvey.title}" completed! Your answers have been recorded.`)
+
+      // Step 1: Send gas-only transaction to view results
+      let txHash: string | null = null
+      try {
+        const provider = await sdk.wallet.getEthereumProvider()
+        
+        if (!provider) {
+          throw new Error('Wallet provider not available. Please ensure you are using the Farcaster app.')
+        }
+
+        // Switch to Base network if needed
+        const BASE_CHAIN_ID = 8453
+        try {
+          await provider.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: `0x${BASE_CHAIN_ID.toString(16)}` }],
+          })
+        } catch (switchError: any) {
+          // If chain doesn't exist, add it (for Base)
+          if (switchError.code === 4902 && BASE_CHAIN_ID === 8453) {
+            await provider.request({
+              method: 'wallet_addEthereumChain',
+              params: [{
+                chainId: '0x2105',
+                chainName: 'Base',
+                nativeCurrency: {
+                  name: 'Ether',
+                  symbol: 'ETH',
+                  decimals: 18,
+                },
+                rpcUrls: ['https://mainnet.base.org'],
+                blockExplorerUrls: ['https://basescan.org'],
+              }],
+            })
+          } else {
+            throw switchError
+          }
+        }
+
+        // Send gas-only transaction (0 ETH to self)
+        txHash = await provider.request({
+          method: 'eth_sendTransaction',
+          params: [{
+            from: walletAddress,
+            to: walletAddress, // Send to self (gas-only transaction)
+            value: '0x0', // 0 ETH
+            data: '0x', // No data
+          }],
+        }) as string
+
+        console.log('[ProfilePage] Transaction sent:', txHash)
+        setSurveyTxHash(txHash)
+
+      } catch (txError) {
+        console.error('[ProfilePage] Transaction error:', txError)
+        throw new Error('Failed to send transaction. Please try again.')
+      }
+
+      // Step 2: Process survey answers and get results
+      const processResponse = await fetch('/api/survey/process', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          surveyId: selectedSurvey.id,
+          surveyTitle: selectedSurvey.title,
+          answers,
+        }),
+      })
+
+      if (!processResponse.ok) {
+        const errorData = await processResponse.json()
+        throw new Error(errorData.error || 'Failed to process survey results')
+      }
+
+      const processData = await processResponse.json()
+      if (!processData.success || !processData.results) {
+        throw new Error('Failed to generate survey results')
+      }
+
+      // Step 3: Show results modal
+      setSurveyResults(processData.results)
+      setShowQuizModal(false)
+      setShowResultsModal(true)
+
     } catch (error) {
       console.error('[ProfilePage] Error completing quiz:', error)
-      alert('Failed to submit quiz. Please try again.')
+      setError(error instanceof Error ? error.message : 'Failed to complete survey. Please try again.')
+      alert(error instanceof Error ? error.message : 'Failed to complete survey. Please try again.')
     }
   }
 
@@ -948,6 +1038,18 @@ export default function ProfilePage({ userProfile }: ProfilePageProps) {
         }}
         survey={selectedSurvey}
         onComplete={handleQuizComplete}
+      />
+
+      {/* Survey Results Modal */}
+      <SurveyResultsModal
+        isOpen={showResultsModal}
+        onClose={() => {
+          setShowResultsModal(false)
+          setSurveyResults(null)
+          setSurveyTxHash(null)
+        }}
+        results={surveyResults}
+        txHash={surveyTxHash || undefined}
       />
     </div>
   )
